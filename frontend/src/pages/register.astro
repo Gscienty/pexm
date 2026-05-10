@@ -1,0 +1,488 @@
+---
+const siteName = "笔阵";
+---
+
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width, 1.0" />
+		<meta name="generator" content={Astro.generator} />
+		<title>注册 - {siteName}</title>
+	</head>
+	<body>
+		<div class="register-container">
+			<div class="register-left">
+				<div class="register-form-wrapper">
+					<div class="register-header">
+						<a href="/" class="logo">{siteName}</a>
+						<h1 class="register-title">创建账户</h1>
+						<p class="register-subtitle">开启您的排版创作之旅</p>
+					</div>
+					
+					<form class="register-form">
+						<div class="form-group">
+							<label for="username">用户名</label>
+							<input type="text" id="username" name="username" placeholder="请输入用户名" required />
+						</div>
+						
+						<div class="form-group">
+							<label for="email">邮箱地址</label>
+							<input type="email" id="email" name="email" placeholder="请输入邮箱地址" required />
+						</div>
+						
+						<div class="form-group">
+							<label for="password">密码</label>
+							<input type="password" id="password" name="password" placeholder="请输入密码（至少6位）" required />
+						</div>
+						
+						<div class="form-group">
+							<label for="confirmPassword">确认密码</label>
+							<input type="password" id="confirmPassword" name="confirmPassword" placeholder="请再次输入密码" required />
+						</div>
+						
+						<div class="form-options">
+							<label class="checkbox-label">
+								<input type="checkbox" name="agree" required />
+								<span>我已阅读并同意<a href="#">服务条款</a></span>
+							</label>
+						</div>
+						
+						<button type="submit" class="btn-register">注册</button>
+						
+						<div class="login-link">
+							已有账户？<a href="/login">立即登录</a>
+						</div>
+					</form>
+				</div>
+			</div>
+			
+			<div class="register-right">
+				<div class="decorative-bg">
+					<div class="paper paper-1"></div>
+					<div class="paper paper-2"></div>
+					<div class="paper paper-3"></div>
+					<div class="paper paper-4"></div>
+					<div class="paper paper-5"></div>
+					
+					<div class="tool tool-compass">
+						<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+							<circle cx="12" cy="12" r="10"/>
+							<path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+						</svg>
+					</div>
+					
+					<div class="tool tool-ruler">
+						<svg width="120" height="40" viewBox="0 0 120 40" fill="none" stroke="currentColor" stroke-width="1.5">
+							<rect x="0" y="0" width="120" height="40" rx="2"/>
+							<line x1="20" y1="0" x2="20" y2="15"/>
+							<line x1="40" y1="0" x2="40" y2="10"/>
+							<line x1="60" y1="0" x2="60" y2="15"/>
+							<line x1="80" y1="0" x2="80" y2="10"/>
+							<line x1="100" y1="0" x2="100" y2="15"/>
+						</svg>
+					</div>
+					
+					<div class="tool tool-beaker">
+						<svg width="60" height="80" viewBox="0 0 24 32" fill="none" stroke="currentColor" stroke-width="1.5">
+							<path d="M8 2h8v8l4 18H4l4-18V2z"/>
+							<line x1="8" y1="2" x2="16" y2="2"/>
+						</svg>
+					</div>
+					
+					<div class="floating-text">
+						<p class="text-line text-line-1">笔墨之间</p>
+						<p class="text-line text-line-2">排版有度</p>
+						<p class="text-line text-line-3">匠心独运</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
+
+<style>
+	:root {
+		--primary-color: #4A90E2;
+		--primary-hover: #357ABD;
+		--text-primary: #2C3E50;
+		--text-secondary: #5A6C7D;
+		--bg-light: #F8FAFC;
+		--bg-white: #FFFFFF;
+		--border-color: #E1E8ED;
+		--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+		--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+		--shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+	}
+
+	* {
+		margin: 0;
+		padding: 0;
+		box-sizing: border-box;
+	}
+
+	body {
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+		background: var(--bg-light);
+		color: var(--text-primary);
+		line-height: 1.6;
+		min-height: 100vh;
+	}
+
+	.register-container {
+		display: flex;
+		min-height: 100vh;
+	}
+
+	.register-left {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--bg-white);
+		padding: 2rem;
+		min-height: 100vh;
+	}
+
+	.register-form-wrapper {
+		width: 100%;
+		max-width: 400px;
+	}
+
+	.register-header {
+		text-align: center;
+		margin-bottom: 2rem;
+	}
+
+	.logo {
+		display: inline-block;
+		font-size: 1.5rem;
+		font-weight: 500;
+		color: var(--text-primary);
+		text-decoration: none;
+		margin-bottom: 1.5rem;
+		letter-spacing: 0.5px;
+	}
+
+	.register-title {
+		font-size: 2rem;
+		font-weight: 500;
+		color: var(--text-primary);
+		margin-bottom: 0.5rem;
+	}
+
+	.register-subtitle {
+		font-size: 0.95rem;
+		color: var(--text-secondary);
+	}
+
+	.register-form {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.form-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.form-group label {
+		font-size: 0.9rem;
+		font-weight: 500;
+		color: var(--text-primary);
+	}
+
+	.form-group input {
+		padding: 0.75rem 1rem;
+		border: 1px solid var(--border-color);
+		border-radius: 8px;
+		font-size: 0.95rem;
+		transition: border-color 0.3s ease, box-shadow 0.3s ease;
+		background: var(--bg-white);
+		color: var(--text-primary);
+	}
+
+	.form-group input:focus {
+		outline: none;
+		border-color: var(--primary-color);
+		box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+	}
+
+	.form-group input::placeholder {
+		color: #A0AEC0;
+	}
+
+	.form-options {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		font-size: 0.9rem;
+	}
+
+	.checkbox-label {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.5rem;
+		cursor: pointer;
+		color: var(--text-secondary);
+		line-height: 1.4;
+	}
+
+	.checkbox-label input[type="checkbox"] {
+		width: 16px;
+		height: 16px;
+		cursor: pointer;
+		margin-top: 2px;
+		flex-shrink: 0;
+	}
+
+	.checkbox-label a {
+		color: var(--primary-color);
+		text-decoration: none;
+		transition: color 0.3s ease;
+	}
+
+	.checkbox-label a:hover {
+		color: var(--primary-hover);
+	}
+
+	.btn-register {
+		padding: 0.875rem;
+		background: var(--primary-color);
+		color: white;
+		border: none;
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: background 0.3s ease, transform 0.2s ease;
+		margin-top: 0.5rem;
+	}
+
+	.btn-register:hover {
+		background: var(--primary-hover);
+		transform: translateY(-1px);
+	}
+
+	.btn-register:active {
+		transform: translateY(0);
+	}
+
+	.login-link {
+		text-align: center;
+		font-size: 0.9rem;
+		color: var(--text-secondary);
+		margin-top: 1.5rem;
+	}
+
+	.login-link a {
+		color: var(--primary-color);
+		text-decoration: none;
+		font-weight: 500;
+		transition: color 0.3s ease;
+	}
+
+	.login-link a:hover {
+		color: var(--primary-hover);
+	}
+
+	.register-right {
+		flex: 1;
+		background: linear-gradient(135deg, #F5F7FA 0%, #E8EEF5 100%);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: relative;
+		overflow: hidden;
+	}
+
+	.decorative-bg {
+		position: relative;
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.paper {
+		position: absolute;
+		background: rgba(255, 255, 255, 0.3);
+		border: 1px solid rgba(200, 210, 220, 0.4);
+		border-radius: 4px;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+	}
+
+	.paper-1 {
+		width: 180px;
+		height: 240px;
+		top: 15%;
+		left: 20%;
+		transform: rotate(-15deg);
+		animation: float1 8s ease-in-out infinite;
+	}
+
+	.paper-2 {
+		width: 160px;
+		height: 220px;
+		top: 25%;
+		right: 25%;
+		transform: rotate(12deg);
+		animation: float2 10s ease-in-out infinite;
+	}
+
+	.paper-3 {
+		width: 140px;
+		height: 200px;
+		bottom: 20%;
+		left: 30%;
+		transform: rotate(-8deg);
+		animation: float3 9s ease-in-out infinite;
+	}
+
+	.paper-4 {
+		width: 120px;
+		height: 180px;
+		bottom: 30%;
+		right: 20%;
+		transform: rotate(18deg);
+		animation: float4 11s ease-in-out infinite;
+	}
+
+	.paper-5 {
+		width: 100px;
+		height: 160px;
+		top: 40%;
+		left: 50%;
+		transform: translateX(-50%) rotate(-3deg);
+		animation: float5 7s ease-in-out infinite;
+	}
+
+	.tool {
+		position: absolute;
+		opacity: 0.15;
+		color: var(--text-secondary);
+	}
+
+	.tool-compass {
+		top: 20%;
+		right: 30%;
+		animation: rotate 20s linear infinite;
+	}
+
+	.tool-ruler {
+		bottom: 25%;
+		left: 25%;
+		transform: rotate(-20deg);
+	}
+
+	.tool-beaker {
+		top: 35%;
+		left: 35%;
+		animation: bounce 3s ease-in-out infinite;
+	}
+
+	.floating-text {
+		position: relative;
+		z-index: 10;
+		text-align: center;
+	}
+
+	.text-line {
+		font-size: 2rem;
+		font-weight: 300;
+		color: var(--text-secondary);
+		opacity: 0.4;
+		margin: 1rem 0;
+		animation: fadeInUp 1s ease-out forwards;
+	}
+
+	.text-line-1 {
+		animation-delay: 0.2s;
+	}
+
+	.text-line-2 {
+		animation-delay: 0.4s;
+	}
+
+	.text-line-3 {
+		animation-delay: 0.6s;
+	}
+
+	@keyframes float1 {
+		0%, 100% { transform: rotate(-15deg) translateY(0); }
+		50% { transform: rotate(-15deg) translateY(-20px); }
+	}
+
+	@keyframes float2 {
+		0%, 100% { transform: rotate(12deg) translateY(0); }
+		50% { transform: rotate(12deg) translateY(-25px); }
+	}
+
+	@keyframes float3 {
+		0%, 100% { transform: rotate(-8deg) translateY(0); }
+		50% { transform: rotate(-8deg) translateY(-15px); }
+	}
+
+	@keyframes float4 {
+		0%, 100% { transform: rotate(18deg) translateY(0); }
+		50% { transform: rotate(18deg) translateY(-18px); }
+	}
+
+	@keyframes float5 {
+		0%, 100% { transform: translateX(-50%) rotate(-3deg) translateY(0); }
+		50% { transform: translateX(-50%) rotate(-3deg) translateY(-22px); }
+	}
+
+	@keyframes rotate {
+		from { transform: rotate(0deg); }
+		to { transform: rotate(360deg); }
+	}
+
+	@keyframes bounce {
+		0%, 100% { transform: translateY(0); }
+		50% { transform: translateY(-10px); }
+	}
+
+	@keyframes fadeInUp {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 0.4;
+			transform: translateY(0);
+		}
+	}
+
+	@media (max-width: 968px) {
+		.register-container {
+			flex-direction: column;
+		}
+
+		.register-left {
+			min-height: 100vh;
+		}
+
+		.register-right {
+			display: none;
+		}
+	}
+
+	@media (max-width: 480px) {
+		.register-form-wrapper {
+			padding: 1rem;
+		}
+
+		.register-title {
+			font-size: 1.75rem;
+		}
+
+		.register-form {
+			gap: 0.875rem;
+		}
+	}
+</style>

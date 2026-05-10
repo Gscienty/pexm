@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>试卷排版系统</title>
+  <desc>飞毯卷轴风格图标</desc>
+
+  <circle cx="64" cy="64" r="64" fill="#7A8299"/>
+
+  <g transform="translate(64, 64)">
+    <!-- 卷轴主体 -->
+    <path d="M-44 -20
+             Q-22 -32 0 -20
+             Q22 -8 44 -20
+             L44 20
+             Q22 32 0 20
+             Q-22 8 -44 20 Z" fill="#F0F1F5"/>
+
+    <!-- 左侧轴杆 -->
+    <rect x="-48" y="-28" width="10" height="56" rx="5" fill="#E8EAEF"/>
+
+    <!-- 右侧轴杆 -->
+    <rect x="38" y="-28" width="10" height="56" rx="5" fill="#E8EAEF"/>
+  </g>
+</svg>

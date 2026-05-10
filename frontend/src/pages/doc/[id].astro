@@ -1,0 +1,461 @@
+---
+import Sidebar from '../../components/console/Sidebar.astro';
+
+export interface Props {
+  id: string;
+}
+
+export function getStaticPaths() {
+  return [
+    { params: { id: 'new' } },
+    { params: { id: '2026年春季期中数学试卷' } },
+    { params: { id: '高二物理力学综合测试' } },
+    { params: { id: '英语阅读理解专项训练' } },
+    { params: { id: '化学实验操作考核' } },
+    { params: { id: '语文古诗词默写练习' } },
+  ];
+}
+
+const { id } = Astro.props;
+
+const siteName = "笔阵";
+
+const mockDocument = {
+  id: id,
+  title: id === 'new' ? '新建试卷' : '2026年春季期中数学试卷',
+  icon: '📐',
+  cover: null,
+  blocks: [
+    { id: '1', type: 'heading_1', content: '2026年春季期中数学试卷' },
+    { id: '2', type: 'paragraph', content: '本试卷共分为三个部分，满分150分，考试时间120分钟。' },
+    { id: '3', type: 'heading_2', content: '第一部分：选择题（共50分）' },
+    { id: '4', type: 'bulleted_list_item', content: '每小题5分，共10小题' },
+    { id: '5', type: 'bulleted_list_item', content: '请将正确答案填写在答题卡上' },
+    { id: '6', type: 'heading_2', content: '第二部分：填空题（共40分）' },
+    { id: '7', type: 'numbered_list_item', content: '每小题4分，共10小题' },
+    { id: '8', type: 'numbered_list_item', content: '答案写在横线上' },
+    { id: '9', type: 'numbered_list_item', content: '必须使用黑色签字笔书写' },
+    { id: '10', type: 'heading_2', content: '第三部分：解答题（共60分）' },
+    { id: '11', type: 'paragraph', content: '解答应写出文字说明、证明过程或演算步骤。' },
+    { id: '12', type: 'callout', content: '⚠️ 注意：请保持卷面整洁，书写工整。' },
+  ],
+  lastEdited: '2026-05-08 14:30',
+  status: id === 'new' ? 'draft' : 'published',
+};
+
+function renderBlock(block: typeof mockDocument.blocks[0]) {
+  switch (block.type) {
+    case 'heading_1':
+      return `<h1 class="block-heading-1">${block.content}</h1>`;
+    case 'heading_2':
+      return `<h2 class="block-heading-2">${block.content}</h2>`;
+    case 'heading_3':
+      return `<h3 class="block-heading-3">${block.content}</h3>`;
+    case 'paragraph':
+      return `<p class="block-paragraph">${block.content}</p>`;
+    case 'bulleted_list_item':
+      return `<li class="block-bullet">${block.content}</li>`;
+    case 'numbered_list_item':
+      return `<li class="block-number">${block.content}</li>`;
+    case 'callout':
+      return `<div class="block-callout">${block.content}</div>`;
+    default:
+      return `<p class="block-paragraph">${block.content}</p>`;
+  }
+}
+---
+
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{mockDocument.title} - {siteName}</title>
+  </head>
+  <body>
+    <Sidebar activePath="/console/papers" />
+
+    <div class="doc-layout">
+      <header class="doc-header">
+        <div class="doc-header-content">
+          <nav class="doc-breadcrumb">
+            <a href="/console" class="breadcrumb-link">控制台</a>
+            <span class="breadcrumb-sep">/</span>
+            <a href="/console/papers" class="breadcrumb-link">试卷空间</a>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-current">{mockDocument.title}</span>
+          </nav>
+          <div class="doc-actions">
+            <button class="action-btn">
+              <span class="action-icon">📋</span>
+              分享
+            </button>
+            <button class="action-btn">
+              <span class="action-icon">❤️</span>
+              收藏
+            </button>
+            <button class="action-btn primary">
+              <span class="action-icon">💾</span>
+              保存
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="doc-main">
+        <div class="doc-container">
+          <div class="doc-icon">{mockDocument.icon}</div>
+          <div class="doc-title" contenteditable="true">{mockDocument.title}</div>
+
+          <div class="doc-content">
+            {mockDocument.blocks.map(block => (
+              <div class="block" data-block-id={block.id}>
+                <button class="block-handle" title="拖动块">⋮⋮</button>
+                <div class="block-content" set:html={renderBlock(block)} />
+                <button class="block-menu" title="块选项">+</button>
+              </div>
+            ))}
+
+            <div class="block block-placeholder" data-block-id="new">
+              <button class="block-handle" title="拖动块">⋮⋮</button>
+              <div class="block-content">
+                <p class="block-paragraph placeholder">输入 / 以使用命令...</p>
+              </div>
+              <button class="block-menu" title="块选项">+</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
+
+<style>
+  :root {
+    --doc-bg: #ffffff;
+    --text-primary: #37352f;
+    --text-secondary: #6b6b6b;
+    --text-tertiary: #9b9b9b;
+    --border-color: #e3e2e0;
+    --hover-bg: #f7f6f3;
+    --sidebar-width: 240px;
+    --header-height: 52px;
+    --content-max-width: 708px;
+    --callout-bg: #fff8e6;
+    --callout-border: #ffd33d;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background-color: var(--doc-bg);
+    color: var(--text-primary);
+    line-height: 1.6;
+  }
+
+  .doc-layout {
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .doc-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-color);
+    height: var(--header-height);
+  }
+
+  .doc-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+    padding: 0 4rem;
+    max-width: calc(var(--content-max-width) + 8rem);
+    margin: 0 auto;
+  }
+
+  .doc-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.875rem;
+  }
+
+  .breadcrumb-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .breadcrumb-link:hover {
+    color: var(--text-primary);
+  }
+
+  .breadcrumb-sep {
+    color: var(--text-tertiary);
+  }
+
+  .breadcrumb-current {
+    color: var(--text-primary);
+    font-weight: 500;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .doc-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .action-btn:hover {
+    background: var(--hover-bg);
+    color: var(--text-primary);
+  }
+
+  .action-btn.primary {
+    background: var(--text-primary);
+    border-color: var(--text-primary);
+    color: white;
+  }
+
+  .action-btn.primary:hover {
+    background: #1a1a1a;
+  }
+
+  .action-icon {
+    font-size: 0.875rem;
+  }
+
+  .doc-main {
+    flex: 1;
+    padding: 3rem 4rem;
+    overflow-y: auto;
+  }
+
+  .doc-container {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding-left: 4rem;
+  }
+
+  .doc-icon {
+    font-size: 4rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+    display: inline-block;
+  }
+
+  .doc-icon:hover {
+    transform: scale(1.1);
+  }
+
+  .doc-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    outline: none;
+    border: none;
+  }
+
+  .doc-title:focus {
+    border-bottom: 2px solid var(--border-color);
+  }
+
+  .doc-content {
+    position: relative;
+  }
+
+  .block {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    padding: 0.25rem 0;
+    margin-left: -3rem;
+    padding-left: 3rem;
+    group: block;
+  }
+
+  .block:hover .block-handle,
+  .block:hover .block-menu {
+    opacity: 1;
+  }
+
+  .block-handle {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+    cursor: grab;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease;
+  }
+
+  .block-handle:hover {
+    background: var(--hover-bg);
+    opacity: 1;
+  }
+
+  .block-menu {
+    position: absolute;
+    right: -2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text-tertiary);
+    font-size: 1rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  }
+
+  .block-menu:hover {
+    background: var(--hover-bg);
+    opacity: 1;
+    transform: translateY(-50%) rotate(90deg);
+  }
+
+  .block-content {
+    flex: 1;
+    min-height: 1.6em;
+  }
+
+  .block-heading-1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.3;
+    margin: 1.5rem 0 0.5rem;
+  }
+
+  .block-heading-2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+    margin: 1.25rem 0 0.375rem;
+  }
+
+  .block-heading-3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+    margin: 1rem 0 0.25rem;
+  }
+
+  .block-paragraph {
+    font-size: 1rem;
+    color: var(--text-primary);
+    line-height: 1.6;
+    margin: 0.125rem 0;
+  }
+
+  .block-paragraph.placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .block-bullet,
+  .block-number {
+    font-size: 1rem;
+    color: var(--text-primary);
+    line-height: 1.6;
+    margin: 0.125rem 0 0.125rem 1.5rem;
+    padding-left: 0.5rem;
+  }
+
+  .block-bullet::marker {
+    content: "•  ";
+    color: var(--text-primary);
+  }
+
+  .block-number::marker {
+    content: counter(list-counter) ".  ";
+    color: var(--text-primary);
+  }
+
+  .block-callout {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--callout-bg);
+    border-radius: 6px;
+    border-left: 4px solid var(--callout-border);
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+    margin: 0.5rem 0;
+  }
+
+  .block-placeholder {
+    margin-top: 0.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .doc-layout {
+      margin-left: 0;
+    }
+
+    .doc-main {
+      padding: 1.5rem;
+    }
+
+    .doc-container {
+      padding-left: 2.5rem;
+    }
+
+    .doc-header-content {
+      padding: 0 1rem;
+    }
+
+    .block-menu {
+      right: -1.5rem;
+    }
+  }
+</style>
