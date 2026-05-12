@@ -1,5 +1,6 @@
 ---
 import Sidebar from '../../components/console/Sidebar.astro';
+import TiptapEditor from '../../components/TiptapEditor.astro';
 
 export interface Props {
   id: string;
@@ -20,49 +21,18 @@ const { id } = Astro.props;
 
 const siteName = "笔阵";
 
-const mockDocument = {
-  id: id,
-  title: id === 'new' ? '新建试卷' : '2026年春季期中数学试卷',
-  icon: '📐',
-  cover: null,
-  blocks: [
-    { id: '1', type: 'heading_1', content: '2026年春季期中数学试卷' },
-    { id: '2', type: 'paragraph', content: '本试卷共分为三个部分，满分150分，考试时间120分钟。' },
-    { id: '3', type: 'heading_2', content: '第一部分：选择题（共50分）' },
-    { id: '4', type: 'bulleted_list_item', content: '每小题5分，共10小题' },
-    { id: '5', type: 'bulleted_list_item', content: '请将正确答案填写在答题卡上' },
-    { id: '6', type: 'heading_2', content: '第二部分：填空题（共40分）' },
-    { id: '7', type: 'numbered_list_item', content: '每小题4分，共10小题' },
-    { id: '8', type: 'numbered_list_item', content: '答案写在横线上' },
-    { id: '9', type: 'numbered_list_item', content: '必须使用黑色签字笔书写' },
-    { id: '10', type: 'heading_2', content: '第三部分：解答题（共60分）' },
-    { id: '11', type: 'paragraph', content: '解答应写出文字说明、证明过程或演算步骤。' },
-    { id: '12', type: 'callout', content: '⚠️ 注意：请保持卷面整洁，书写工整。' },
-  ],
-  lastEdited: '2026-05-08 14:30',
-  status: id === 'new' ? 'draft' : 'published',
-};
+const initialContent = id === 'new'
+  ? '<h1>新建试卷</h1><p>开始编辑您的试卷内容...</p>'
+  : `<h1>2026年春季期中数学试卷</h1>
+<p>本试卷共分为三个部分，满分150分，考试时间120分钟。</p>
+<h2>第一部分：选择题（共50分）</h2>
+<ul><li>每小题5分，共10小题</li><li>请将正确答案填写在答题卡上</li></ul>
+<h2>第二部分：填空题（共40分）</h2>
+<ol><li>每小题4分，共10小题</li><li>答案写在横线上</li><li>必须使用黑色签字笔书写</li></ol>
+<h2>第三部分：解答题（共60分）</h2>
+<p>解答应写出文字说明、证明过程或演算步骤。</p>
+<blockquote>⚠️ 注意：请保持卷面整洁，书写工整。</blockquote>`;
 
-function renderBlock(block: typeof mockDocument.blocks[0]) {
-  switch (block.type) {
-    case 'heading_1':
-      return `<h1 class="block-heading-1">${block.content}</h1>`;
-    case 'heading_2':
-      return `<h2 class="block-heading-2">${block.content}</h2>`;
-    case 'heading_3':
-      return `<h3 class="block-heading-3">${block.content}</h3>`;
-    case 'paragraph':
-      return `<p class="block-paragraph">${block.content}</p>`;
-    case 'bulleted_list_item':
-      return `<li class="block-bullet">${block.content}</li>`;
-    case 'numbered_list_item':
-      return `<li class="block-number">${block.content}</li>`;
-    case 'callout':
-      return `<div class="block-callout">${block.content}</div>`;
-    default:
-      return `<p class="block-paragraph">${block.content}</p>`;
-  }
-}
 ---
 
 <html lang="zh-CN">
@@ -70,7 +40,7 @@ function renderBlock(block: typeof mockDocument.blocks[0]) {
     <meta charset="utf-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{mockDocument.title} - {siteName}</title>
+    <title>{id === 'new' ? '新建试卷' : id} - {siteName}</title>
   </head>
   <body>
     <Sidebar activePath="/console/papers" />
@@ -83,7 +53,7 @@ function renderBlock(block: typeof mockDocument.blocks[0]) {
             <span class="breadcrumb-sep">/</span>
             <a href="/console/papers" class="breadcrumb-link">试卷空间</a>
             <span class="breadcrumb-sep">/</span>
-            <span class="breadcrumb-current">{mockDocument.title}</span>
+            <span class="breadcrumb-current">{id === 'new' ? '新建试卷' : id}</span>
           </nav>
           <div class="doc-actions">
             <button class="action-btn">
@@ -103,32 +73,131 @@ function renderBlock(block: typeof mockDocument.blocks[0]) {
       </header>
 
       <main class="doc-main">
+        <aside class="doc-outline" id="docOutline">
+          <div class="outline-header">大纲</div>
+          <ul class="outline-list" id="outlineList"></ul>
+        </aside>
+
         <div class="doc-container">
-          <div class="doc-icon">{mockDocument.icon}</div>
-          <div class="doc-title" contenteditable="true">{mockDocument.title}</div>
+          <div class="doc-title" contenteditable="true" data-placeholder="试卷标题">{id === 'new' ? '新建试卷' : id}</div>
 
-          <div class="doc-content">
-            {mockDocument.blocks.map(block => (
-              <div class="block" data-block-id={block.id}>
-                <button class="block-handle" title="拖动块">⋮⋮</button>
-                <div class="block-content" set:html={renderBlock(block)} />
-                <button class="block-menu" title="块选项">+</button>
-              </div>
-            ))}
-
-            <div class="block block-placeholder" data-block-id="new">
-              <button class="block-handle" title="拖动块">⋮⋮</button>
-              <div class="block-content">
-                <p class="block-paragraph placeholder">输入 / 以使用命令...</p>
-              </div>
-              <button class="block-menu" title="块选项">+</button>
-            </div>
-          </div>
+          <TiptapEditor content={initialContent} placeholder="输入 / 以使用命令..." class="doc-editor" />
         </div>
       </main>
     </div>
   </body>
 </html>
+
+<script>
+  const docTitle = document.querySelector('.doc-title');
+  const siteName = "笔阵";
+  let isComposing = false;
+
+  if (docTitle) {
+    const updateTitles = () => {
+      const text = docTitle.textContent?.trim() || '';
+      if (!text) {
+        docTitle.innerHTML = '';
+      }
+      const title = text || '未命名试卷';
+      document.title = `${title} - ${siteName}`;
+      const breadcrumbCurrent = document.querySelector('.breadcrumb-current');
+      if (breadcrumbCurrent) {
+        breadcrumbCurrent.textContent = title;
+      }
+    };
+
+    docTitle.addEventListener('input', updateTitles);
+
+    updateTitles();
+
+    docTitle.addEventListener('compositionstart', () => {
+      isComposing = true;
+    });
+
+    docTitle.addEventListener('compositionend', () => {
+      isComposing = false;
+    });
+
+    docTitle.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !isComposing) {
+        e.preventDefault();
+        const editor = document.querySelector('.ProseMirror');
+        if (editor instanceof HTMLElement) {
+          editor.focus();
+        }
+      }
+    });
+  }
+
+  const outlineList = document.getElementById('outlineList');
+  const docMain = document.querySelector('.doc-main');
+
+  function renderOutline(headings: { id: string; text: string; level: number }[]) {
+    if (!outlineList) return;
+
+    if (headings.length === 0) {
+      outlineList.innerHTML = '<li class="outline-empty">暂无标题</li>';
+      return;
+    }
+
+    outlineList.innerHTML = headings
+      .map((h) => {
+        const indent = h.level - 1;
+        return `<li class="outline-item" data-id="${h.id}" style="padding-left: ${indent * 12 + 8}px">
+          <a href="#${h.id}" class="outline-link">${h.text || '未命名'}</a>
+        </li>`;
+      })
+      .join('');
+
+    outlineList.querySelectorAll('.outline-link').forEach((link) => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const id = (link.closest('.outline-item') as HTMLElement)?.dataset.id;
+        if (!id) return;
+        const target = document.getElementById(id);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  }
+
+  document.addEventListener('headings-change', ((e: CustomEvent) => {
+    renderOutline(e.detail.headings);
+  }) as EventListener);
+
+  let currentActiveId = '';
+  function updateActiveHeading() {
+    if (!outlineList) return;
+    const items = outlineList.querySelectorAll('.outline-item');
+    if (items.length === 0) return;
+
+    let activeId = '';
+    items.forEach((item) => {
+      const id = (item as HTMLElement).dataset.id;
+      if (!id) return;
+      const el = document.getElementById(id);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= 120) {
+          activeId = id;
+        }
+      }
+    });
+
+    if (activeId !== currentActiveId) {
+      currentActiveId = activeId;
+      items.forEach((item) => {
+        item.classList.toggle('active', (item as HTMLElement).dataset.id === activeId);
+      });
+    }
+  }
+
+  if (docMain) {
+    docMain.addEventListener('scroll', updateActiveHeading, { passive: true });
+  }
+</script>
 
 <style>
   :root {
@@ -140,7 +209,7 @@ function renderBlock(block: typeof mockDocument.blocks[0]) {
     --hover-bg: #f7f6f3;
     --sidebar-width: 240px;
     --header-height: 52px;
-    --content-max-width: 708px;
+    --content-max-width: 900px;
     --callout-bg: #fff8e6;
     --callout-border: #ffd33d;
   }
@@ -160,9 +229,10 @@ function renderBlock(block: typeof mockDocument.blocks[0]) {
 
   .doc-layout {
     margin-left: var(--sidebar-width);
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   .doc-header {
@@ -255,14 +325,101 @@ function renderBlock(block: typeof mockDocument.blocks[0]) {
 
   .doc-main {
     flex: 1;
-    padding: 3rem 4rem;
+    display: flex;
     overflow-y: auto;
   }
 
+  .doc-outline {
+    position: sticky;
+    top: calc(var(--header-height) + 1.5rem);
+    width: 220px;
+    min-width: 220px;
+    max-height: calc(100vh - var(--header-height) - 3rem);
+    overflow-y: auto;
+    padding: 1.5rem 0.5rem 1.5rem 1.5rem;
+    flex-shrink: 0;
+    align-self: flex-start;
+  }
+
+  .doc-outline :global(.outline-header) {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    padding: 0 8px;
+  }
+
+  .doc-outline :global(.outline-list) {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .doc-outline :global(.outline-empty) {
+    font-size: 0.8125rem;
+    color: var(--text-tertiary);
+    padding: 0 8px;
+    font-style: italic;
+  }
+
+  .doc-outline :global(.outline-item) {
+    position: relative;
+    padding: 0.4rem 8px;
+    border-radius: 4px;
+    transition: background 0.15s ease;
+  }
+
+  .doc-outline :global(.outline-item::before) {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: transparent;
+    border-radius: 1px;
+    transition: background 0.15s ease;
+  }
+
+  .doc-outline :global(.outline-item.active::before) {
+    background: var(--text-primary);
+  }
+
+  .doc-outline :global(.outline-item.active) {
+    background: var(--hover-bg);
+  }
+
+  .doc-outline :global(.outline-item:hover) {
+    background: var(--hover-bg);
+  }
+
+  .doc-outline :global(.outline-link) {
+    display: block;
+    font-size: 0.8125rem;
+    color: var(--text-tertiary);
+    text-decoration: none;
+    line-height: 1.75;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color 0.15s ease;
+  }
+
+  .doc-outline :global(.outline-item.active .outline-link) {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .doc-outline :global(.outline-link:hover) {
+    color: var(--text-primary);
+  }
+
   .doc-container {
-    max-width: var(--content-max-width);
-    margin: 0 auto;
-    padding-left: 4rem;
+    flex: 1;
+    min-width: 0;
+    padding: 3rem 4rem 3rem 2rem;
   }
 
   .doc-icon {
@@ -285,156 +442,20 @@ function renderBlock(block: typeof mockDocument.blocks[0]) {
     margin-bottom: 1.5rem;
     outline: none;
     border: none;
+    min-height: 1.2em;
+  }
+
+  .doc-title:empty::before {
+    content: attr(data-placeholder);
+    color: var(--text-tertiary);
   }
 
   .doc-title:focus {
     border-bottom: 2px solid var(--border-color);
   }
 
-  .doc-content {
-    position: relative;
-  }
-
-  .block {
-    position: relative;
-    display: flex;
-    align-items: flex-start;
-    padding: 0.25rem 0;
-    margin-left: -3rem;
-    padding-left: 3rem;
-    group: block;
-  }
-
-  .block:hover .block-handle,
-  .block:hover .block-menu {
-    opacity: 1;
-  }
-
-  .block-handle {
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 1.5rem;
-    height: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    border-radius: 4px;
-    color: var(--text-tertiary);
-    font-size: 0.75rem;
-    cursor: grab;
-    opacity: 0;
-    transition: opacity 0.15s ease, background 0.15s ease;
-  }
-
-  .block-handle:hover {
-    background: var(--hover-bg);
-    opacity: 1;
-  }
-
-  .block-menu {
-    position: absolute;
-    right: -2rem;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 1.5rem;
-    height: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    border-radius: 4px;
-    color: var(--text-tertiary);
-    font-size: 1rem;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.15s ease, background 0.15s ease, transform 0.15s ease;
-  }
-
-  .block-menu:hover {
-    background: var(--hover-bg);
-    opacity: 1;
-    transform: translateY(-50%) rotate(90deg);
-  }
-
-  .block-content {
-    flex: 1;
-    min-height: 1.6em;
-  }
-
-  .block-heading-1 {
-    font-size: 1.875rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    line-height: 1.3;
-    margin: 1.5rem 0 0.5rem;
-  }
-
-  .block-heading-2 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    line-height: 1.3;
-    margin: 1.25rem 0 0.375rem;
-  }
-
-  .block-heading-3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    line-height: 1.3;
-    margin: 1rem 0 0.25rem;
-  }
-
-  .block-paragraph {
-    font-size: 1rem;
-    color: var(--text-primary);
-    line-height: 1.6;
-    margin: 0.125rem 0;
-  }
-
-  .block-paragraph.placeholder {
-    color: var(--text-tertiary);
-  }
-
-  .block-bullet,
-  .block-number {
-    font-size: 1rem;
-    color: var(--text-primary);
-    line-height: 1.6;
-    margin: 0.125rem 0 0.125rem 1.5rem;
-    padding-left: 0.5rem;
-  }
-
-  .block-bullet::marker {
-    content: "•  ";
-    color: var(--text-primary);
-  }
-
-  .block-number::marker {
-    content: counter(list-counter) ".  ";
-    color: var(--text-primary);
-  }
-
-  .block-callout {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 1rem;
-    background: var(--callout-bg);
-    border-radius: 6px;
-    border-left: 4px solid var(--callout-border);
-    font-size: 0.9375rem;
-    color: var(--text-primary);
-    margin: 0.5rem 0;
-  }
-
-  .block-placeholder {
-    margin-top: 0.5rem;
+  .doc-editor {
+    margin-top: 1rem;
   }
 
   @media (max-width: 768px) {
@@ -442,12 +463,16 @@ function renderBlock(block: typeof mockDocument.blocks[0]) {
       margin-left: 0;
     }
 
+    .doc-outline {
+      display: none;
+    }
+
     .doc-main {
       padding: 1.5rem;
     }
 
     .doc-container {
-      padding-left: 2.5rem;
+      padding: 0;
     }
 
     .doc-header-content {

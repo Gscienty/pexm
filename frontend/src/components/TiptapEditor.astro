@@ -1,0 +1,122 @@
+---
+export interface Props {
+  content?: string;
+  class?: string;
+}
+
+const { content = '', class: className = '' } = Astro.props;
+---
+
+<div class={`tiptap-wrapper ${className}`}>
+  <div class="editor" data-content={content}></div>
+</div>
+
+<script>
+  import { Editor } from '@tiptap/core';
+  import StarterKit from '@tiptap/starter-kit';
+  import { Anchor } from './tiptap/anchor';
+  import { Question } from './tiptap/question';
+  import { DragHandle } from './tiptap/drag-handle';
+
+  const editors = document.querySelectorAll('.editor');
+
+  editors.forEach((el) => {
+    const content = (el as HTMLElement).dataset.content || '';
+
+    new Editor({
+      element: el as HTMLElement,
+      extensions: [StarterKit, Anchor, Question, DragHandle],
+      content: content,
+    });
+  });
+</script>
+
+<style>
+  .tiptap-wrapper {
+    width: 100%;
+  }
+
+  .editor {
+    outline: none;
+    min-height: 300px;
+    width: 100%;
+  }
+
+  .editor :global(.ProseMirror) {
+    outline: none;
+    min-height: 300px;
+    width: 100%;
+  }
+
+  .editor :global(.ProseMirror p) {
+    margin: 0.5em 0;
+  }
+
+  .editor :global(.ProseMirror h1),
+  .editor :global(.ProseMirror h2),
+  .editor :global(.ProseMirror h3) {
+    scroll-margin-top: 70px;
+  }
+
+  .editor :global(.ProseMirror h1) {
+    font-size: 1.875rem;
+    font-weight: 700;
+    margin: 1em 0 0.5em;
+  }
+
+  .editor :global(.ProseMirror h2) {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 1em 0 0.375em;
+  }
+
+  .editor :global(.ProseMirror h3) {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0.875em 0 0.25em;
+  }
+
+  .editor :global(.ProseMirror ul),
+  .editor :global(.ProseMirror ol) {
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+  }
+
+  .editor :global(.ProseMirror li) {
+    margin: 0.25em 0;
+  }
+
+  .editor :global(.ProseMirror blockquote) {
+    border-left: 3px solid #e3e2e0;
+    padding-left: 1em;
+    margin: 1em 0;
+    color: #6b6b6b;
+  }
+
+  .editor :global(.ProseMirror .question-block) {
+    background: #f5f5f4;
+    border-radius: 8px;
+    padding: 2rem 1rem 0.75rem;
+    margin: 0.75rem 0;
+    position: relative;
+  }
+
+  .editor :global(.ProseMirror .question-block::before) {
+    content: attr(data-label);
+    position: absolute;
+    top: 0.5rem;
+    left: 0.75rem;
+    font-size: 0.75rem;
+    color: #9b9b9b;
+    font-weight: 500;
+    pointer-events: none;
+  }
+
+  .editor :global(.ProseMirror .question-block p:first-child) {
+    margin-top: 0;
+  }
+
+  .editor :global(.ProseMirror .question-block p:last-child) {
+    margin-bottom: 0;
+  }
+</style>
