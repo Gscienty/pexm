@@ -73,15 +73,24 @@ const initialContent = id === 'new'
       </header>
 
       <main class="doc-main">
-        <aside class="doc-outline" id="docOutline">
-          <div class="outline-header">大纲</div>
-          <ul class="outline-list" id="outlineList"></ul>
-        </aside>
+        <div class="doc-content-wrapper">
+          <aside class="doc-outline" id="docOutline">
+            <div class="outline-header">大纲</div>
+            <ul class="outline-list" id="outlineList"></ul>
+          </aside>
 
-        <div class="doc-container">
-          <div class="doc-title" contenteditable="true" data-placeholder="试卷标题">{id === 'new' ? '新建试卷' : id}</div>
+          <div class="doc-container">
+            <div class="doc-title" contenteditable="true" data-placeholder="试卷标题">{id === 'new' ? '新建试卷' : id}</div>
 
-          <TiptapEditor content={initialContent} placeholder="输入 / 以使用命令..." class="doc-editor" />
+            <TiptapEditor content={initialContent} placeholder="输入 / 以使用命令..." class="doc-editor" />
+          </div>
+
+          <aside class="doc-annotations" id="docAnnotations">
+            <div class="annotations-header">圈点留言</div>
+            <div class="annotations-placeholder">
+              <p>选中正文内容后，可在此处添加圈点与留言</p>
+            </div>
+          </aside>
         </div>
       </main>
     </div>
@@ -209,7 +218,7 @@ const initialContent = id === 'new'
     --hover-bg: #f7f6f3;
     --sidebar-width: 240px;
     --header-height: 52px;
-    --content-max-width: 900px;
+    --content-max-width: 680px;
     --callout-bg: #fff8e6;
     --callout-border: #ffd33d;
   }
@@ -251,7 +260,7 @@ const initialContent = id === 'new'
     align-items: center;
     height: 100%;
     padding: 0 4rem;
-    max-width: calc(var(--content-max-width) + 8rem);
+    max-width: calc(var(--content-max-width) + 240px + 4rem);
     margin: 0 auto;
   }
 
@@ -325,20 +334,23 @@ const initialContent = id === 'new'
 
   .doc-main {
     flex: 1;
-    display: flex;
     overflow-y: auto;
+  }
+
+  .doc-content-wrapper {
+    display: grid;
+    grid-template-columns: 240px 1fr 240px;
+    width: 100%;
+    min-height: calc(100vh - var(--header-height));
   }
 
   .doc-outline {
     position: sticky;
     top: calc(var(--header-height) + 1.5rem);
-    width: 220px;
-    min-width: 220px;
+    align-self: flex-start;
     max-height: calc(100vh - var(--header-height) - 3rem);
     overflow-y: auto;
-    padding: 1.5rem 0.5rem 1.5rem 1.5rem;
-    flex-shrink: 0;
-    align-self: flex-start;
+    padding: 1.5rem 0.5rem 1.5rem 1rem;
   }
 
   .doc-outline :global(.outline-header) {
@@ -417,9 +429,39 @@ const initialContent = id === 'new'
   }
 
   .doc-container {
-    flex: 1;
-    min-width: 0;
-    padding: 3rem 4rem 3rem 2rem;
+    max-width: var(--content-max-width);
+    justify-self: center;
+    width: 100%;
+    padding: 3rem 2rem 3rem 2rem;
+  }
+
+  .doc-annotations {
+    position: sticky;
+    top: calc(var(--header-height) + 1.5rem);
+    align-self: flex-start;
+    max-height: calc(100vh - var(--header-height) - 3rem);
+    overflow-y: auto;
+    padding: 1.5rem 1.5rem 1.5rem 0.5rem;
+    border-left: 1px solid var(--border-color);
+  }
+
+  .doc-annotations :global(.annotations-header) {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+  }
+
+  .doc-annotations :global(.annotations-placeholder) {
+    font-size: 0.8125rem;
+    color: var(--text-tertiary);
+    line-height: 1.6;
+  }
+
+  .doc-annotations :global(.annotations-placeholder p) {
+    margin: 0;
   }
 
   .doc-icon {
@@ -464,6 +506,10 @@ const initialContent = id === 'new'
     }
 
     .doc-outline {
+      display: none;
+    }
+
+    .doc-annotations {
       display: none;
     }
 

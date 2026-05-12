@@ -10,6 +10,7 @@ export const DragHandle = Extension.create({
       handle: null as HTMLDivElement | null,
       ghost: null as HTMLElement | null,
       placeholder: null as HTMLElement | null,
+      dropIndicator: null as HTMLElement | null,
       blockPos: -1,
       isDragging: false,
       sourcePos: -1,
@@ -44,6 +45,21 @@ export const DragHandle = Extension.create({
     });
     document.body.appendChild(handle);
     storage.handle = handle;
+
+    const dropIndicator = document.createElement('div');
+    Object.assign(dropIndicator.style, {
+      position: 'fixed',
+      display: 'none',
+      height: '2px',
+      background: '#4b8ce8',
+      borderRadius: '1px',
+      pointerEvents: 'none',
+      zIndex: '999',
+      opacity: '0',
+      transition: 'opacity 0.15s ease, top 0.15s ease, left 0.15s ease',
+    });
+    document.body.appendChild(dropIndicator);
+    storage.dropIndicator = dropIndicator;
 
     const findTopLevelBlock = (el: HTMLElement): HTMLElement | null => {
       let current = el;
@@ -229,6 +245,7 @@ export const DragHandle = Extension.create({
         const target = findDropTarget(e.clientY);
         if (!target || target.pos === storage.sourcePos) {
           removePlaceholder();
+          hideDropIndicator();
           storage.targetPos = -1;
           if (storage.ghost) {
             storage.ghost.style.transition = 'top 0.15s ease, left 0.15s ease';
@@ -239,6 +256,8 @@ export const DragHandle = Extension.create({
 
         storage.targetPos = target.pos;
         storage.insertBefore = target.insertBefore;
+
+        showDropIndicator(target.el, target.insertBefore);
 
         const ph = createPlaceholder(sourceBlock);
         removePlaceholder();
@@ -261,6 +280,8 @@ export const DragHandle = Extension.create({
       const onMouseUp = () => {
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
+
+        hideDropIndicator();
 
         if (storage.sourceEl) {
           storage.sourceEl.style.opacity = '';
@@ -306,6 +327,26 @@ export const DragHandle = Extension.create({
       storage.placeholder = null;
     };
 
+    const showDropIndicator = (targetEl: HTMLElement, insertBefore: boolean) => {
+      const rect = targetEl.getBoundingClientRect();
+      const editorRect = editorEl.getBoundingClientRect();
+      const y = insertBefore ? rect.top : rect.bottom;
+      dropIndicator.style.display = 'block';
+      dropIndicator.style.left = `${editorRect.left}px`;
+      dropIndicator.style.width = `${editorRect.width}px`;
+      dropIndicator.style.top = `${y}px`;
+      dropIndicator.style.opacity = '1';
+    };
+
+    const hideDropIndicator = () => {
+      dropIndicator.style.opacity = '0';
+      setTimeout(() => {
+        if (dropIndicator.style.opacity === '0') {
+          dropIndicator.style.display = 'none';
+        }
+      }, 150);
+    };
+
     handle.addEventListener('mousedown', onHandleMouseDown);
     storage.cleanupFns.push(() => {
       handle.removeEventListener('mousedown', onHandleMouseDown);
@@ -319,6 +360,7 @@ export const DragHandle = Extension.create({
     storage.handle?.remove();
     storage.ghost?.remove();
     storage.placeholder?.remove();
+    storage.dropIndicator?.remove();
   },
 });
 
