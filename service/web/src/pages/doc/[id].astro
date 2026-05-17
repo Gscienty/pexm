@@ -2,10 +2,6 @@
 import Sidebar from '../../components/console/Sidebar.astro';
 import TiptapEditor from '../../components/TiptapEditor.astro';
 
-export interface Props {
-  id: string;
-}
-
 export function getStaticPaths() {
   return [
     { params: { id: 'new' } },
@@ -17,7 +13,7 @@ export function getStaticPaths() {
   ];
 }
 
-const { id } = Astro.props;
+const { id } = Astro.params;
 
 const siteName = "笔阵";
 
@@ -82,7 +78,7 @@ const initialContent = id === 'new'
           <div class="doc-container">
             <div class="doc-title" contenteditable="true" data-placeholder="试卷标题">{id === 'new' ? '新建试卷' : id}</div>
 
-            <TiptapEditor content={initialContent} placeholder="输入 / 以使用命令..." class="doc-editor" />
+            <TiptapEditor content={initialContent} docName={id} wsUrl="localhost:3000" placeholder="输入 / 以使用命令..." class="doc-editor" />
           </div>
 
           <aside class="doc-annotations" id="docAnnotations">

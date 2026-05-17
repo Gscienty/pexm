@@ -1,14 +1,15 @@
-mod handler;
 mod biz;
+mod handler;
 
 use axum::{routing::get, Router};
-use biz::room::DocSyncRoomManager;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tracing::info;
 
+use crate::biz::room_set::RoomSet;
+
 pub struct AppState {
-    pub doc_sync: Arc<DocSyncRoomManager>,
+    pub room_set: RoomSet<()>,
 }
 
 #[tokio::main]
@@ -20,10 +21,8 @@ async fn main() {
         )
         .init();
 
-    let mut doc_sync = DocSyncRoomManager::new();
-
     let state = Arc::new(AppState {
-        doc_sync: Arc::new(doc_sync),
+        room_set: RoomSet::new(),
     });
 
     let app = Router::new()

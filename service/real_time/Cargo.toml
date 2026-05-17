@@ -9,6 +9,14 @@ tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.6", features = ["cors"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+futures-util = { version = "0.3", default-features = false, features = [
+  "sink",
+  "std",
+] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+y-octo = { git = "https://github.com/y-crdt/y-octo", branch = "main", features = [
+  "events",
+] }
+auth-lib = { path = "../../lib/auth-lib/" }
+futures = "0.3.32"

@@ -1,68 +1,47 @@
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 
+use auth_lib::claim::Claim;
 use axum::{
-    extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
-        Path, State,
-    },
-    http::StatusCode,
+    extract::{ws::WebSocketUpgrade, Path, State},
     response::IntoResponse,
 };
-use futures_util::{SinkExt, StreamExt};
-use tracing::info;
 
-use crate::AppState;
+use crate::{
+    biz::{handler::handle_sync_stream, principal::Principal, room::cmd::DocRoomCommand},
+    AppState,
+};
+
+static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub async fn websocket_handler(
-    ws: WebSocketUpgrade,
     Path(token): Path<String>,
     State(state): State<Arc<AppState>>,
-) -> Result<impl IntoResponse, StatusCode> {
-    info!("WebSocket connection request, token: {token}");
+    ws: WebSocketUpgrade,
+) -> impl IntoResponse {
+    let (doc_id, user_id, user_name) = (1, 1, "mock_user".to_string());
 
-    let Some((conn_id, rx)) = state.doc_sync.try_join(&token).await else {
-        info!("on_conn_before hook rejected token: {token}");
-        return Err(StatusCode::FORBIDDEN);
-    };
+    let connection_id = CONNECTION_COUNTER.fetch_add(1, Ordering::SeqCst);
+    let claim = Claim::new(user_id, user_name, connection_id);
+    let principal = Principal::new(doc_id, token, claim, connection_id);
 
-    Ok(ws.on_upgrade(move |socket| handle_socket(socket, token, state, conn_id, rx)))
-}
+    ws.on_upgrade(move |ws| async move {
+        let docroom = if let Some(cmd) = state.room_set.get_docroom(&principal).await {
+            cmd
+        } else {
+            let Ok(cmd): Result<DocRoomCommand, ()> =
+                state.room_set.build_docroom(&principal, (), &[]).await
+            else {
+                tracing::error!("Failed to build docroom");
+                return;
+            };
+            cmd
+        };
 
-async fn handle_socket(
-    socket: WebSocket,
-    token: String,
-    state: Arc<AppState>,
-    conn_id: u64,
-    mut rx: tokio::sync::mpsc::UnboundedReceiver<String>,
-) {
-    let (mut sender, mut receiver) = socket.split();
-
-    loop {
-        tokio::select! {
-            Some(msg) = rx.recv() => {
-                if sender
-                    .send(Message::Text(msg.into()))
-                    .await
-                    .is_err()
-                {
-                    break;
-                }
-            }
-            Some(Ok(msg)) = receiver.next() => {
-                match msg {
-                    Message::Text(text) => {
-                        info!("Received text message: {text}");
-                        state.doc_sync.broadcast(&token, &text).await;
-                    }
-                    Message::Close(_) => {
-                        info!("Client disconnected, token: {token}");
-                        break;
-                    }
-                    _ => {}
-                }
-            }
+        if handle_sync_stream(docroom, principal, ws).await.is_err() {
+            tracing::error!("Sync stream error");
         }
-    }
-
-    state.doc_sync.leave(&token, conn_id).await;
+    })
 }
