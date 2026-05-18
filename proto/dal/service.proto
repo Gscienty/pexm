@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package dal;
+
+import "dal/auth.proto";
+
+service DalService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc LoginByEmail(LoginByEmailRequest) returns (LoginByEmailResponse);
+}

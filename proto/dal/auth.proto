@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dal;
+
+message RegisterRequest {
+  string username = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message RegisterResponse {
+  int64 user_id = 1;
+}
+
+message LoginByEmailRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginByEmailResponse {
+  int64 user_id = 1;
+  string username = 2;
+  string token = 3;
+}

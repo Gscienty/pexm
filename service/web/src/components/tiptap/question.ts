@@ -42,7 +42,7 @@ function computeQuestionLabels(doc: any): DecorationSet {
 export const Question = Node.create({
   name: 'question',
   group: 'block',
-  content: '(paragraph|heading|bulletList|orderedList|blockquote|codeBlock|question)+',
+  content: '(paragraph|heading|bulletList|uppercaseLetterList|blockquote|codeBlock|question)+',
   defining: true,
   isolating: true,
 
@@ -88,6 +88,7 @@ export const Question = Node.create({
         }
 
         if (questionDepth === -1) return false;
+        if ($from.depth !== questionDepth + 1) return false;
 
         const questionNode = $from.node(questionDepth);
         const questionStart = $from.before(questionDepth);

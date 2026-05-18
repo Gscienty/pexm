@@ -20,6 +20,7 @@ const { content = '', class: className = '', docName = '', wsUrl = '' } = Astro.
   import { Question } from './tiptap/question';
   import { DragHandle } from './tiptap/drag-handle';
   import { Collaboration } from './tiptap/collaboration';
+  import { UppercaseLetterList } from './tiptap/uppercase-letter-list';
 
   const editors = document.querySelectorAll('.editor');
 
@@ -29,7 +30,15 @@ const { content = '', class: className = '', docName = '', wsUrl = '' } = Astro.
     const docName = element.dataset.docName || '';
     const wsUrl = element.dataset.wsUrl || '';
 
-    const extensions = [StarterKit, Anchor, Question, DragHandle];
+    const extensions = [
+      StarterKit.configure({
+        orderedList: { priority: 99 },
+      }),
+      Anchor,
+      Question,
+      DragHandle,
+      UppercaseLetterList,
+    ];
 
     if (docName) {
       extensions.push(Collaboration.configure({ docName, wsUrl }));
@@ -96,6 +105,10 @@ const { content = '', class: className = '', docName = '', wsUrl = '' } = Astro.
 
   .editor :global(.ProseMirror li) {
     margin: 0.25em 0;
+  }
+
+  .editor :global(.ProseMirror ol[data-type="uppercase-letter-list"]) {
+    list-style-type: upper-alpha;
   }
 
   .editor :global(.ProseMirror blockquote) {
