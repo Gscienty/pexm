@@ -21,7 +21,7 @@ const siteName = "笔阵";
 						<p class="register-subtitle">开启您的排版创作之旅</p>
 					</div>
 					
-					<form class="register-form">
+					<form class="register-form" id="registerForm">
 						<div class="form-group">
 							<label for="username">用户名</label>
 							<input type="text" id="username" name="username" placeholder="请输入用户名" required />
@@ -41,6 +41,8 @@ const siteName = "笔阵";
 							<label for="confirmPassword">确认密码</label>
 							<input type="password" id="confirmPassword" name="confirmPassword" placeholder="请再次输入密码" required />
 						</div>
+
+						<div class="form-error" id="formError"></div>
 						
 						<div class="form-options">
 							<label class="checkbox-label">
@@ -49,7 +51,7 @@ const siteName = "笔阵";
 							</label>
 						</div>
 						
-						<button type="submit" class="btn-register">注册</button>
+						<button type="submit" class="btn-register" id="submitBtn">注册</button>
 						
 						<div class="login-link">
 							已有账户？<a href="/login">立即登录</a>
@@ -99,6 +101,65 @@ const siteName = "笔阵";
 				</div>
 			</div>
 		</div>
+	<script>
+		const BFF_BASE = 'http://localhost:3000';
+
+		const form = document.getElementById('registerForm');
+		const errorEl = document.getElementById('formError');
+		const submitBtn = document.getElementById('submitBtn');
+
+		function showError(msg: string) {
+			errorEl.textContent = msg;
+			errorEl.style.display = 'block';
+		}
+
+		function hideError() {
+			errorEl.style.display = 'none';
+		}
+
+		form!.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			hideError();
+
+			const username = (document.getElementById('username') as HTMLInputElement).value.trim();
+			const email = (document.getElementById('email') as HTMLInputElement).value.trim();
+			const password = (document.getElementById('password') as HTMLInputElement).value;
+			const confirmPassword = (document.getElementById('confirmPassword') as HTMLInputElement).value;
+
+			if (password !== confirmPassword) {
+				showError('两次输入的密码不一致');
+				return;
+			}
+
+			if (password.length < 6) {
+				showError('密码长度至少6位');
+				return;
+			}
+
+			submitBtn!.setAttribute('disabled', '');
+			submitBtn!.textContent = '注册中...';
+
+			try {
+				const res = await fetch(`${BFF_BASE}/api/auth/register`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ username, email, password }),
+				});
+
+				if (res.ok) {
+					window.location.href = '/login';
+				} else {
+					const data = await res.json();
+					showError(data.message || data.error || '注册失败，请稍后重试');
+				}
+			} catch {
+				showError('网络错误，请稍后重试');
+			} finally {
+				submitBtn!.removeAttribute('disabled');
+				submitBtn!.textContent = '注册';
+			}
+		});
+	</script>
 	</body>
 </html>
 
@@ -213,6 +274,13 @@ const siteName = "笔阵";
 
 	.form-group input::placeholder {
 		color: #A0AEC0;
+	}
+
+	.form-error {
+		display: none;
+		color: #E74C3C;
+		font-size: 0.875rem;
+		padding: 0.5rem 0;
 	}
 
 	.form-options {
