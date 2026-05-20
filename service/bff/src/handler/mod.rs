@@ -14,6 +14,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/api/health", get(health))
         .route("/api/auth/register", post(auth::register))
         .route("/api/auth/login", post(auth::login))
+        .route("/api/auth/me", get(auth::me))
         .with_state(state)
 }
 

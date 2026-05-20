@@ -5,7 +5,9 @@ Backend For Frontend 服务，为 Web 前端提供 HTTP API，内部通过 gRPC 
 ## 技术栈
 
 - Axum (Web 框架)
+- axum-extra/cookie (Cookie 处理)
 - Tonic (gRPC 客户端)
+- auth-lib (JWT 编解码)
 - config (配置管理)
 - tower-http/CorsLayer (跨域)
 
@@ -13,11 +15,11 @@ Backend For Frontend 服务，为 Web 前端提供 HTTP API，内部通过 gRPC 
 
 ```
 src/
-├── main.rs          # 入口：初始化配置、gRPC 连接、启动 HTTP 服务
+├── main.rs          # 入口：初始化配置、加载密钥、gRPC 连接、启动 HTTP 服务
 ├── config.rs        # 配置加载（TOML 文件 + 环境变量）
 ├── handler/
 │   ├── mod.rs       # 路由定义
-│   └── auth.rs      # 认证相关 handler（注册、登录）
+│   └── auth.rs      # 认证相关 handler（注册、登录、获取当前用户）
 └── rpcclient/
     ├── mod.rs       # gRPC 客户端导出
     └── dal.rs       # dal 服务 gRPC 客户端
@@ -35,6 +37,14 @@ port = 3000
 [dal]
 addr = "http://127.0.0.1:4000"
 ```
+
+## 认证机制
+
+- JWT Token 通过 HttpOnly Cookie 传递，Cookie 名为 `token`
+- Cookie 属性：HttpOnly、SameSite=Lax、Path=/、Max-Age=24h
+- 登录成功后由 BFF 设置 Set-Cookie 响应头
+- 前端通过 `/api/auth/me` 接口验证登录状态，无需自行解析 token
+- BFF 使用 auth-lib 的 Jot 解码 Cookie 中的 token
 
 ## Web API
 
@@ -114,17 +124,17 @@ Content-Type: application/json
 
 **成功响应** `200 OK`
 
+响应头 `Set-Cookie` 中包含 HttpOnly 的 `token` Cookie。
+
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | user_id | i64 | 用户 ID |
 | username | string | 用户名 |
-| token | string | JWT Token (EdDSA) |
 
 ```json
 {
   "user_id": 1,
-  "username": "张三",
-  "token": "eyJhbGciOiJFZERTQSJ9..."
+  "username": "张三"
 }
 ```
 
@@ -135,4 +145,33 @@ Content-Type: application/json
 
 ```json
 "错误信息字符串"
+```
+
+### 获取当前用户
+
+```
+GET /api/auth/me
+Cookie: token=<jwt_token>
+```
+
+**成功响应** `200 OK`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| user_id | u64 | 用户 ID |
+| username | string | 用户名 |
+
+```json
+{
+  "user_id": 1,
+  "username": "张三"
+}
+```
+
+**错误响应**
+
+- `401 Unauthorized` — 未登录或 token 无效/过期
+
+```json
+"未登录"
 ```

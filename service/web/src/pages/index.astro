@@ -18,9 +18,14 @@ const siteName = "笔阵";
 					<img src="/exam-icon.svg" alt="笔阵图标" class="site-icon" />
 					<span>{siteName}</span>
 				</a>
-				<nav class="nav">
-					<a href="/login" class="btn btn-outline">登录</a>
-					<a href="/register" class="btn btn-primary">注册</a>
+				<nav class="nav" id="navAuth">
+					<a href="/login" class="btn btn-outline" id="navLogin">登录</a>
+					<a href="/register" class="btn btn-primary" id="navRegister">注册</a>
+					<span class="nav-welcome" id="navWelcome" style="display:none">
+						欢迎，<strong id="navUsername"></strong>
+						<a href="/console" class="btn btn-outline">控制台</a>
+						<a href="#" class="btn btn-outline" id="navLogout">退出</a>
+					</span>
 				</nav>
 			</div>
 		</header>
@@ -207,6 +212,26 @@ const siteName = "笔阵";
 
 			typeWriter();
 		</script>
+	<script>
+		const BFF_BASE = '';
+
+		fetch(`${BFF_BASE}/api/auth/me`, { credentials: 'include' })
+			.then(res => res.ok ? res.json() : null)
+			.then(data => {
+				if (data && data.username) {
+					document.getElementById('navLogin')!.style.display = 'none';
+					document.getElementById('navRegister')!.style.display = 'none';
+					document.getElementById('navWelcome')!.style.display = 'inline-flex';
+					document.getElementById('navUsername')!.textContent = data.username;
+				}
+			});
+
+		document.getElementById('navLogout')!.addEventListener('click', async (e) => {
+			e.preventDefault();
+			document.cookie = 'token=; path=/; max-age=0';
+			window.location.reload();
+		});
+	</script>
 	</body>
 </html>
 
@@ -293,6 +318,14 @@ const siteName = "笔阵";
 		display: flex;
 		gap: 1.5rem;
 		align-items: center;
+	}
+
+	.nav-welcome {
+		display: inline-flex;
+		gap: 1rem;
+		align-items: center;
+		font-size: 0.95rem;
+		color: var(--text-secondary);
 	}
 
 	.btn {

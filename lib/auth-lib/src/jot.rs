@@ -18,7 +18,8 @@ impl Jot {
         let encoding_key = EncodingKey::from_ed_pem(pkey).unwrap();
         let decoding_key = DecodingKey::from_ed_pem(pubkey).unwrap();
 
-        let validation = Validation::new(Algorithm::EdDSA);
+        let mut validation = Validation::new(Algorithm::EdDSA);
+        validation.set_required_spec_claims(&["exp", "nbf"]);
 
         Ok(Self {
             encoding_key,

@@ -148,6 +148,24 @@ const recentPapers = [
 				</div>
 			</div>
 		</main>
+	<script>
+		const BFF_BASE = '';
+
+		fetch(`${BFF_BASE}/api/auth/me`, { credentials: 'include' })
+			.then(res => {
+				if (!res.ok) {
+					window.location.href = '/login';
+					return null;
+				}
+				return res.json();
+			})
+			.then(data => {
+				if (data && data.username) {
+					const el = document.querySelector('.page-title');
+					if (el) el.textContent = `欢迎回来，${data.username}`;
+				}
+			});
+	</script>
 	</body>
 </html>
 

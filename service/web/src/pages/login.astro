@@ -93,7 +93,7 @@ const siteName = "笔阵";
 			</div>
 		</div>
 	<script>
-		const BFF_BASE = 'http://localhost:3000';
+		const BFF_BASE = '';
 
 		const form = document.getElementById('loginForm');
 		const errorEl = document.getElementById('formError');
@@ -122,15 +122,12 @@ const siteName = "笔阵";
 				const res = await fetch(`${BFF_BASE}/api/auth/login`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
 					body: JSON.stringify({ email, password }),
 				});
 
 				if (res.ok) {
-					const data = await res.json();
-					localStorage.setItem('token', data.token);
-					localStorage.setItem('username', data.username);
-					localStorage.setItem('user_id', String(data.user_id));
-					window.location.href = '/';
+					window.location.href = '/console';
 				} else {
 					const data = await res.json();
 					showError(data.message || data.error || '登录失败，请检查邮箱和密码');

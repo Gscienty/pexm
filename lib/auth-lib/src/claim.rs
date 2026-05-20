@@ -7,6 +7,7 @@ pub struct Claim {
     iss: String,      // issuer
     exp: u64,         // expiration time
     sub: u64,         // subject
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     aud: Vec<String>, // audience
     nbf: u64,         // not before
     iat: u64,         // issued at
@@ -35,6 +36,10 @@ impl Claim {
 
     pub const fn get_subject(&self) -> u64 {
         self.sub
+    }
+
+    pub fn get_name(&self) -> &str {
+        &self.name
     }
 
     pub fn set_issuer(&mut self, iss: &str) {

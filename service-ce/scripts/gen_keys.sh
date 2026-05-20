@@ -2,7 +2,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+SERVICE_CE_DIR="$(dirname "$SCRIPT_DIR")"
+ROOT_DIR="$(dirname "$SERVICE_CE_DIR")"
 KEYS_DIR="$ROOT_DIR/keys"
 
 mkdir -p "$KEYS_DIR"

@@ -41,3 +41,4 @@ impl Config {
         format!("{}:{}", self.server.host, self.server.port)
     }
 }
+
