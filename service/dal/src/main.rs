@@ -5,8 +5,9 @@ use std::sync::Arc;
 
 use auth_lib::jot::Jot;
 use db::sqlite::SqliteDb;
-use db::DbPool;
+use db::{DbPool, ExamSpaceMemberRepo, ExamSpaceRepo};
 use handler::auth::AuthHandler;
+use handler::exam_space::ExamSpaceHandler;
 use handler::DalServiceHandler;
 use tonic::transport::Server;
 use tracing::info;
@@ -26,14 +27,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
 
-    let db: DbPool = Arc::new(SqliteDb::new("dal.db")?);
+    let sqlite = Arc::new(SqliteDb::new("dal.db")?);
+
+    let db: DbPool = sqlite.clone() as Arc<dyn db::UserRepo>;
+    let exam_space_db: Arc<dyn ExamSpaceRepo> = sqlite.clone();
+    let member_db: Arc<dyn ExamSpaceMemberRepo> = sqlite;
 
     let pkey = include_bytes!("../../../keys/ed25519_private.pem");
     let pubkey = include_bytes!("../../../keys/ed25519_public.pem");
     let jot = Arc::new(Jot::new(pkey, pubkey).map_err(|e| e.to_string())?);
 
     let auth_handler = AuthHandler::new(db, jot);
-    let dal_service = DalServiceHandler::new(auth_handler);
+    let exam_space_handler = ExamSpaceHandler::new(exam_space_db, member_db);
+    let dal_service = DalServiceHandler::new(auth_handler, exam_space_handler);
 
     let addr = "0.0.0.0:4000".parse()?;
 

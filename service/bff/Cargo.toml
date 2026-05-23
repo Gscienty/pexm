@@ -16,6 +16,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 auth-lib = { path = "../../lib/auth-lib" }
 time = "0.3"
+async-graphql = "7"
+async-graphql-axum = "7"
 
 [build-dependencies]
 tonic-build = "0.13"

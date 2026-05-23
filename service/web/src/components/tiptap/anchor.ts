@@ -74,7 +74,7 @@ function updateHeadingIds(editor: ReturnType<typeof Extension.create>['editor'])
     }
   });
 
-  if (modified) {
+  if (modified && !view.composing) {
     view.dispatch(tr);
   }
 

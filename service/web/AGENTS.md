@@ -2,7 +2,7 @@
 
 ## 概述
 
-基于 Astro 的前端应用，提供试卷编辑功能。核心是 Tiptap 富文本编辑器，通过 y-prosemirror + yjs 实现多人实时协作。
+基于 Astro 的前端应用，提供试卷编辑功能。核心是 Tiptap 富文本编辑器，通过 y-prosemirror + yjs 实现多人实时协作。包含用户认证（注册/登录）、Console 控制台页面等。
 
 ## 技术栈
 
@@ -16,9 +16,16 @@
 ```
 src/
 ├── pages/
+│   ├── index.astro                  # 首页
+│   ├── login.astro                  # 登录页面
+│   ├── register.astro               # 注册页面
+│   ├── console.astro                # 控制台（需登录）
+│   ├── console/
+│   │   └── papers.astro             # 试卷空间管理页面
 │   └── doc/
 │       └── [id].astro              # 文档编辑页面（核心页面）
 ├── components/
+│   ├── Navbar.astro                 # 全局导航栏（含登录状态）
 │   ├── TiptapEditor.astro          # Tiptap 编辑器组件（入口）
 │   ├── console/
 │   │   └── Sidebar.astro           # 控制台侧边栏
@@ -28,9 +35,62 @@ src/
 │       ├── anchor.ts               # 标题锚点（自动生成 heading id）
 │       └── drag-handle.ts          # 拖拽手柄
 └── lib/
+    ├── api.ts                       # API 请求封装（fetch + credentials: include）
     ├── protocol.ts                 # 消息协议编解码（与后端对应）
     └── ws-provider.ts              # WebSocket 连接管理（DocWebSocketProvider）
 ```
+
+## 部署架构
+
+用户通过 Nginx 统一访问，无需关注后端端口：
+
+```
+Browser (:4321 dev / :8080 prod)
+  │
+  ├── /api/auth/* ──▶ Nginx ──▶ BFF :3000 ── gRPC ──▶ DAL :4000
+  ├── /api/websocket/* ──▶ Nginx ──▶ real_time :3001
+  └── /* (静态资源) ──▶ Nginx ──▶ web :4321
+```
+
+前端所有 API 请求使用**相对路径**（如 `/api/auth/login`），无需写死 localhost:3000。
+
+## 认证机制
+
+- JWT Token 存储在 **HttpOnly Cookie**（`token`）中，JavaScript 无法访问
+- 所有 API 请求通过 `fetch(..., { credentials: 'include' })` 自动携带 Cookie
+- **Navbar** 组件在页面加载时调用 `/api/auth/me` 判断登录状态：
+  - 未登录 → 显示「登录」「注册」按钮
+  - 已登录 → 显示「欢迎，{username}」和「退出」按钮
+- **Console 页面**：`client:load` 时检查登录状态，未登录自动跳转 `/login`
+- **登录成功后**自动跳转 `/console`
+
+### API 请求封装（lib/api.ts）
+
+```typescript
+async function apiFetch(path: string, options?: RequestInit) {
+  const res = await fetch(path, {
+    ...options,
+    credentials: 'include',  // 携带 HttpOnly Cookie
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+```
+
+## 页面路由
+
+| 路径 | 说明 | 认证 |
+|------|------|------|
+| `/` | 首页 | 否 |
+| `/login` | 登录页 | 否 |
+| `/register` | 注册页 | 否 |
+| `/console` | 控制台 | 是（未登录跳转 /login） |
+| `/console/papers` | 试卷空间管理 | 是 |
+| `/doc/[id]` | 文档编辑页 | 是 |
 
 ## 架构详解
 
@@ -87,7 +147,7 @@ export const Collaboration = Extension.create({
 `DocWebSocketProvider` 管理 WebSocket 连接和同步生命周期：
 
 **连接流程**:
-1. `connect()` 建立 WebSocket 连接到 `ws://host/api/websocket/doc/{roomName}`
+1. `connect()` 建立 WebSocket 连接到 `wss://域名/api/websocket/doc/{roomName}`
 2. `onopen` 时发送 Step1（携带本地 StateVector）
 3. 收到 Step2 后 `Y.applyUpdate(doc, data, this)` 应用远程更新
 4. 首次同步完成后注册 `updateHandler`：`doc.on('update', this.updateHandler)`
@@ -99,8 +159,6 @@ this.updateHandler = (update, origin) => {
     this.sendUpdate(update);      // 将本地编辑发送到服务端
 };
 ```
-
-**重要**: `updateHandler` 只在首次收到 Step2 后才注册。在此之前本地编辑不会发送到服务端（但实际中首次同步很快，通常不会丢失）。
 
 **重连**: 连接断开后 3 秒自动重连。
 
@@ -115,7 +173,7 @@ this.updateHandler = (update, origin) => {
 
 **解码函数**:
 - `readVarUint` / `readVarString` / `readVarBuffer`: varint 解码
-- `decodeMessage(data)`: 解码完整消息，返回 `{ name, messageType, docMessageType?, data?, syncStatus? }`
+- `decodeMessage(data)`: 解码完整消息
 
 **消息格式**（与后端一致）:
 ```
@@ -131,19 +189,18 @@ export const Question = Node.create({
   name: 'question',
   group: 'block',
   content: '(paragraph|heading|bulletList|orderedList|blockquote|codeBlock|question)+',
-  defining: true,    // 在 ProseMirror 中作为独立块
+  defining: true,    // 独立块
   isolating: true,   // 隔离选区边界
 });
 ```
 
 **特性**:
-- 支持嵌套（content 中包含 question）
 - 自动编号（通过 ProseMirror Plugin + Decoration 实现 "第 1 题"、"第 1.1 题"）
-- 快捷键：`Mod-Shift-Q` 切换题目，`Enter` 在空段落时退出题目，`Backspace` 在空题目时删除
-- 输入规则：输入 `. ` 或 `。 ` 自动创建题目
-- 渲染为 `<div data-type="question" class="question-block">`
+- 快捷输入：`A. ` / `a. ` / `A.。` / `a.。` 触发大写字母有序列表
+- 回车在空段落时退出题目，Backspace 在空题目时删除
+- 非空内容的 question 回车不会自动消失
 
-**在 y-prosemirror 中的表示**: Question 节点被序列化为 `Y.XmlElement('question')`，其子节点（paragraph 等）作为 Y.XmlElement 的 children。这与普通 block 节点（如 blockquote）的处理方式相同。
+**在 y-prosemirror 中的表示**: Question 节点被序列化为 `Y.XmlElement('question')`，子节点作为其 children。
 
 ### 7. 标题锚点（anchor.ts）
 
@@ -155,29 +212,17 @@ export const Question = Node.create({
 ### 8. y-prosemirror 同步机制
 
 **ProseMirror → Yjs**（本地编辑）:
-1. 用户在 Tiptap 中编辑
-2. ProseMirror 触发 transaction
-3. `ySyncPlugin` 的 `apply` 检测到非 yjs 来源的变更
-4. 调用 `binding._prosemirrorChanged(doc)` → `updateYFragment(doc, type, doc, meta)`
-5. `updateYFragment` 递归遍历 ProseMirror 文档树，通过 `createTypeFromElementNode` 将每个节点转换为 Y.XmlElement/Y.XmlText
-6. Yjs 生成 update 事件 → `updateHandler` 发送到服务端
+1. 用户在 Tiptap 中编辑 → ProseMirror transaction
+2. `ySyncPlugin#apply` 检测非 yjs 来源变更
+3. `updateYFragment` 递归遍历 ProseMirror 文档树，转换为 Y.XmlElement/Y.XmlText
+4. Yjs 生成 update 事件 → `updateHandler` 发送到服务端
 
 **Yjs → ProseMirror**（远程更新）:
-1. 收到服务端 Step2 消息
-2. `Y.applyUpdate(doc, data, this)` 应用更新
-3. Yjs 触发 observe 回调 → `binding._typeChanged(events, transaction)`
-4. `_typeChanged` 通过 `createNodeIfNotExists` 将 Y.XmlElement 转换回 ProseMirror Node
-5. 使用 `tr.replace` 替换整个文档内容
-
-**关键函数**:
-- `createTypeFromElementNode(node, meta)`: ProseMirror Node → Y.XmlElement
-- `createNodeFromYElement(el, schema, meta)`: Y.XmlElement → ProseMirror Node
-- `updateYFragment(y, yDomFragment, pNode, meta)`: 递归 diff 并更新 YXmlFragment
-- `normalizePNodeContent(pnode)`: 将 ProseMirror 的 inline text nodes 合并为数组
+1. 收到服务端 Step2 → `Y.applyUpdate(doc, data, this)`
+2. Yjs observe 回调 → `_typeChanged` 将 Y.XmlElement 转为 ProseMirror Node
+3. 使用 `tr.replace(0, docSize, newSlice)` 全量替换文档
 
 ### 9. 已知问题
 
-- **标题不同步**: `doc-title` 是独立 contenteditable div，不在 Tiptap 编辑器内，不参与 yjs 同步。多人协作时标题不会实时更新。
-- **Question 节点同步**: Question 作为自定义 Y.XmlElement('question') 参与同步，理论上与普通节点无异。但如果 y-octo 后端处理 XMLElement 时出现问题（如 `repair` 中 `swap_take` 导致的 `InvalidParent` 错误），会导致同步失败。
-- **updateHandler 注册时机**: 只在首次收到 Step2 后才注册，如果初始同步失败则永远不会发送本地编辑。
-- **全量替换**: `_typeChanged` 使用 `tr.replace(0, docSize, newSlice)` 全量替换文档，而非增量 patch。大文档时可能有性能问题。
+- **标题不同步**: `doc-title` 是独立 contenteditable div，不参与 yjs 同步
+- **全量替换**: `_typeChanged` 使用 `tr.replace` 全量替换，大文档时可能有性能问题

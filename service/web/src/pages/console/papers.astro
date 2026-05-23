@@ -1,0 +1,628 @@
+---
+import Sidebar from '../../components/console/Sidebar.astro';
+
+const siteName = "笔阵";
+---
+
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="generator" content={Astro.generator} />
+		<title>试卷空间 - {siteName}</title>
+	</head>
+	<body>
+		<Sidebar activePath="/console/papers" />
+
+		<main class="main">
+			<div class="content">
+				<div class="breadcrumb">
+					<a href="/console" class="breadcrumb-item">控制台</a>
+					<span class="breadcrumb-sep">/</span>
+					<span class="breadcrumb-item current">试卷空间</span>
+				</div>
+
+				<div class="page-header">
+					<h1 class="page-title">试卷空间</h1>
+					<p class="page-subtitle">管理您的试卷空间，创建、编辑和协作</p>
+					<button class="btn-create" id="btnCreate">+ 新建空间</button>
+				</div>
+
+				<div id="spacesContainer" class="spaces-container">
+					<div class="loading" id="loading">加载中...</div>
+					<div class="empty-state" id="emptyState" style="display:none">
+						<div class="empty-icon">📄</div>
+						<h2 class="empty-title">还没有试卷空间</h2>
+						<p class="empty-desc">创建您的第一个试卷空间，开始管理试卷</p>
+						<button class="btn-create btn-create-large" id="btnCreateEmpty">+ 新建空间</button>
+					</div>
+					<div class="spaces-grid" id="spacesGrid" style="display:none"></div>
+				</div>
+			</div>
+		</main>
+
+		<div class="modal-overlay" id="modalOverlay" style="display:none">
+			<div class="modal">
+				<div class="modal-header">
+					<h2 class="modal-title">新建试卷空间</h2>
+					<button class="modal-close" id="modalClose">&times;</button>
+				</div>
+				<form id="createForm">
+					<div class="form-group">
+						<label for="spaceName">空间名称</label>
+						<input type="text" id="spaceName" name="name" placeholder="输入试卷空间名称" required autofocus />
+					</div>
+					<div class="form-group">
+						<label for="spaceDesc">描述（可选）</label>
+						<textarea id="spaceDesc" name="description" placeholder="简单描述这个空间" rows="2"></textarea>
+					</div>
+					<div class="form-error" id="formError"></div>
+					<div class="modal-actions">
+						<button type="button" class="btn-cancel" id="modalCancel">取消</button>
+						<button type="submit" class="btn-submit" id="submitBtn">创建</button>
+					</div>
+				</form>
+			</div>
+		</div>
+
+	<script>
+		const BFF_BASE = '';
+
+		interface ExamSpace {
+			id: number;
+			token: string;
+			name: string;
+			description: string;
+			lastUpdatedAt: string;
+			memberCount: number;
+			paperCount: number;
+		}
+
+		async function checkAuth(): Promise<string | null> {
+			try {
+				const res = await fetch(`${BFF_BASE}/api/auth/me`, { credentials: 'include' });
+				if (!res.ok) {
+					window.location.href = '/login';
+					return null;
+				}
+				const data = await res.json();
+				return data.username;
+			} catch {
+				window.location.href = '/login';
+				return null;
+			}
+		}
+
+		async function fetchSpaces(): Promise<ExamSpace[]> {
+			const query = `
+				query {
+					myExamSpaces {
+						id
+						token
+						name
+						description
+						lastUpdatedAt
+						memberCount
+						paperCount
+					}
+				}
+			`;
+			const res = await fetch(`${BFF_BASE}/api/graphql`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ query }),
+			});
+			if (!res.ok) throw new Error('Failed to fetch spaces');
+			const json = await res.json();
+			if (json.errors) throw new Error(json.errors[0]?.message || 'GraphQL error');
+			return json.data?.myExamSpaces || [];
+		}
+
+		async function createSpace(name: string, description: string): Promise<number> {
+			const res = await fetch(`${BFF_BASE}/api/exam-spaces`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ name, description }),
+			});
+			if (!res.ok) {
+				const err = await res.text();
+				throw new Error(err || '创建失败');
+			}
+			const json = await res.json();
+			return json.id;
+		}
+
+		function formatDate(dateStr: string): string {
+			if (!dateStr) return '';
+			const d = new Date(dateStr);
+			return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+		}
+
+		function renderSpaces(spaces: ExamSpace[]) {
+			const grid = document.getElementById('spacesGrid')!;
+			const empty = document.getElementById('emptyState')!;
+			const loading = document.getElementById('loading')!;
+
+			loading.style.display = 'none';
+
+			if (spaces.length === 0) {
+				empty.style.display = 'flex';
+				grid.style.display = 'none';
+				return;
+			}
+
+			empty.style.display = 'none';
+			grid.style.display = 'grid';
+			grid.innerHTML = spaces.map(s => `
+				<a href="/doc/${encodeURIComponent(s.token)}" class="space-card">
+					<div class="space-card-header">
+						<span class="space-card-icon">📐</span>
+						<span class="space-card-name">${escapeHtml(s.name)}</span>
+					</div>
+					<p class="space-card-desc">${escapeHtml(s.description || '暂无描述')}</p>
+					<div class="space-card-footer">
+						<div class="space-card-stats">
+							<span class="space-card-stat" title="成员">
+								<svg class="stat-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+								${s.memberCount}
+							</span>
+							<span class="space-card-stat" title="试卷">
+								<svg class="stat-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+								${s.paperCount}
+							</span>
+						</div>
+						<span class="space-card-date">${formatDate(s.lastUpdatedAt)}</span>
+					</div>
+				</a>
+			`).join('');
+		}
+
+		function escapeHtml(text: string): string {
+			const el = document.createElement('div');
+			el.textContent = text;
+			return el.innerHTML;
+		}
+
+		function openModal() {
+			document.getElementById('modalOverlay')!.style.display = 'flex';
+			(document.getElementById('spaceName') as HTMLInputElement).focus();
+		}
+
+		function closeModal() {
+			document.getElementById('modalOverlay')!.style.display = 'none';
+			(document.getElementById('createForm') as HTMLFormElement).reset();
+			document.getElementById('formError')!.style.display = 'none';
+		}
+
+		async function init() {
+			const username = await checkAuth();
+			if (!username) return;
+
+			try {
+				const spaces = await fetchSpaces();
+				renderSpaces(spaces);
+			} catch (e) {
+				document.getElementById('loading')!.style.display = 'none';
+				document.getElementById('emptyState')!.style.display = 'flex';
+				const emptyTitle = document.querySelector('.empty-title');
+				if (emptyTitle) emptyTitle.textContent = '点击此处创建试卷空间';
+				const emptyDesc = document.querySelector('.empty-desc');
+				if (emptyDesc) emptyDesc.textContent = '出现了一些问题，但您可以继续创建';
+				console.error(e);
+			}
+
+			document.getElementById('btnCreate')!.addEventListener('click', openModal);
+			document.getElementById('btnCreateEmpty')!.addEventListener('click', openModal);
+			document.getElementById('modalClose')!.addEventListener('click', closeModal);
+			document.getElementById('modalCancel')!.addEventListener('click', closeModal);
+			document.getElementById('modalOverlay')!.addEventListener('click', (e) => {
+				if ((e.target as HTMLElement).id === 'modalOverlay') closeModal();
+			});
+
+			const form = document.getElementById('createForm')!;
+			const errorEl = document.getElementById('formError')!;
+			const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement;
+
+			form.addEventListener('submit', async (e) => {
+				e.preventDefault();
+				errorEl.style.display = 'none';
+				const name = (document.getElementById('spaceName') as HTMLInputElement).value.trim();
+				const description = (document.getElementById('spaceDesc') as HTMLTextAreaElement).value.trim();
+				if (!name) return;
+
+				submitBtn.disabled = true;
+				submitBtn.textContent = '创建中...';
+				try {
+					await createSpace(name, description);
+					closeModal();
+					const spaces = await fetchSpaces();
+					renderSpaces(spaces);
+				} catch (err: any) {
+					errorEl.textContent = err.message || '创建失败';
+					errorEl.style.display = 'block';
+				} finally {
+					submitBtn.disabled = false;
+					submitBtn.textContent = '创建';
+				}
+			});
+		}
+
+		init();
+	</script>
+	</body>
+</html>
+
+<style>
+	* {
+		margin: 0;
+		padding: 0;
+		box-sizing: border-box;
+	}
+
+	:root {
+		--main-bg: #ffffff;
+		--text-primary: #37352f;
+		--text-secondary: #6b6b6b;
+		--text-tertiary: #9ca3af;
+		--border-color: #e3e2e0;
+		--hover-bg: #f7f6f3;
+		--sidebar-active: #e3e2e0;
+		--blue: #4A90E2;
+		--blue-hover: #357ABD;
+		--radius: 8px;
+	}
+
+	body {
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+		background-color: var(--main-bg);
+		color: var(--text-primary);
+		line-height: 1.5;
+		display: flex;
+		min-height: 100vh;
+	}
+
+	.main {
+		flex: 1;
+		margin-left: 240px;
+		min-height: 100vh;
+	}
+
+	.content {
+		max-width: 960px;
+		margin: 0 auto;
+		padding: 3rem 4rem;
+	}
+
+	.breadcrumb {
+		margin-bottom: 1rem;
+		font-size: 0.875rem;
+	}
+
+	.breadcrumb-item {
+		color: var(--text-secondary);
+		text-decoration: none;
+	}
+
+	.breadcrumb-item:hover {
+		color: var(--text-primary);
+	}
+
+	.breadcrumb-item.current {
+		color: var(--text-primary);
+		font-weight: 500;
+	}
+
+	.breadcrumb-sep {
+		color: var(--text-tertiary);
+		margin: 0 0.375rem;
+	}
+
+	.page-header {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		margin-bottom: 2rem;
+		flex-wrap: wrap;
+	}
+
+	.page-title {
+		font-size: 1.75rem;
+		font-weight: 700;
+	}
+
+	.page-subtitle {
+		color: var(--text-secondary);
+		font-size: 0.9rem;
+		flex: 1;
+	}
+
+	.btn-create {
+		padding: 0.5rem 1rem;
+		background: transparent;
+		color: #8CA5C8;
+		border: 1px solid #E0E6EE;
+		border-radius: 6px;
+		font-size: 0.875rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+		white-space: nowrap;
+	}
+
+	.btn-create:hover {
+		color: #5B8EDE;
+		border-color: #C8D8ED;
+		background: #F5F8FC;
+	}
+
+	.btn-create-large {
+		padding: 0.75rem 1.5rem;
+		font-size: 1rem;
+	}
+
+	.loading {
+		text-align: center;
+		padding: 3rem;
+		color: var(--text-secondary);
+	}
+
+	.empty-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 4rem 2rem;
+		text-align: center;
+	}
+
+	.empty-icon {
+		font-size: 4rem;
+		margin-bottom: 1rem;
+	}
+
+	.empty-title {
+		font-size: 1.25rem;
+		font-weight: 600;
+		margin-bottom: 0.5rem;
+	}
+
+	.empty-desc {
+		color: var(--text-secondary);
+		margin-bottom: 1.5rem;
+	}
+
+	:global(.spaces-grid) {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+		gap: 1rem;
+	}
+
+	:global(.space-card) {
+		display: flex;
+		flex-direction: column;
+		padding: 1.25rem;
+		border: 1px solid var(--border-color);
+		border-radius: var(--radius);
+		text-decoration: none;
+		color: var(--text-primary);
+		transition: box-shadow 0.15s ease, border-color 0.15s ease;
+		cursor: pointer;
+		min-height: 140px;
+	}
+
+	:global(.space-card:hover) {
+		border-color: var(--blue);
+		box-shadow: 0 2px 8px rgba(74, 144, 226, 0.12);
+	}
+
+	:global(.space-card-header) {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		margin-bottom: 0.625rem;
+	}
+
+	:global(.space-card-icon) {
+		font-size: 1.25rem;
+	}
+
+	:global(.space-card-name) {
+		font-size: 0.95rem;
+		font-weight: 600;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	:global(.space-card-desc) {
+		font-size: 0.8125rem;
+		color: var(--text-secondary);
+		flex: 1;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	:global(.space-card-footer) {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-top: 0.75rem;
+		padding-top: 0.625rem;
+		border-top: 1px solid var(--border-color);
+	}
+
+	:global(.space-card-stats) {
+		display: flex;
+		gap: 0.875rem;
+	}
+
+	:global(.space-card-stat) {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		font-size: 0.75rem;
+		color: var(--text-tertiary);
+	}
+
+	:global(.stat-icon) {
+		flex-shrink: 0;
+	}
+
+	:global(.space-card-date) {
+		font-size: 0.75rem;
+		color: var(--text-tertiary);
+	}
+
+	.modal-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.4);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 200;
+	}
+
+	.modal {
+		background: var(--main-bg);
+		border-radius: 12px;
+		width: 480px;
+		max-width: 90vw;
+		padding: 1.5rem;
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+	}
+
+	.modal-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 1.25rem;
+	}
+
+	.modal-title {
+		font-size: 1.125rem;
+		font-weight: 600;
+	}
+
+	.modal-close {
+		background: none;
+		border: none;
+		font-size: 1.5rem;
+		color: var(--text-secondary);
+		cursor: pointer;
+		padding: 0;
+		line-height: 1;
+	}
+
+	.modal-close:hover {
+		color: var(--text-primary);
+	}
+
+	.form-group {
+		margin-bottom: 1rem;
+	}
+
+	.form-group label {
+		display: block;
+		font-size: 0.875rem;
+		font-weight: 500;
+		margin-bottom: 0.375rem;
+	}
+
+	.form-group input,
+	.form-group textarea {
+		width: 100%;
+		padding: 0.625rem 0.75rem;
+		border: 1px solid var(--border-color);
+		border-radius: 6px;
+		font-size: 0.9rem;
+		font-family: inherit;
+		outline: none;
+		transition: border-color 0.15s ease;
+	}
+
+	.form-group input:focus,
+	.form-group textarea:focus {
+		border-color: var(--blue);
+		box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+	}
+
+	.form-group textarea {
+		resize: vertical;
+	}
+
+	.form-error {
+		display: none;
+		color: #E74C3C;
+		font-size: 0.8125rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.modal-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.625rem;
+		margin-top: 0.5rem;
+	}
+
+	.btn-cancel {
+		padding: 0.5rem 1rem;
+		background: var(--hover-bg);
+		border: 1px solid var(--border-color);
+		border-radius: 6px;
+		font-size: 0.875rem;
+		cursor: pointer;
+		color: var(--text-primary);
+		transition: background 0.15s ease;
+	}
+
+	.btn-cancel:hover {
+		background: var(--sidebar-active);
+	}
+
+	.btn-submit {
+		padding: 0.5rem 1.25rem;
+		background: transparent;
+		color: #8CA5C8;
+		border: 1px solid #E0E6EE;
+		border-radius: 6px;
+		font-size: 0.875rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+	}
+
+	.btn-submit:hover {
+		color: #5B8EDE;
+		border-color: #C8D8ED;
+		background: #F5F8FC;
+	}
+
+	.btn-submit:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	@media (max-width: 768px) {
+		.main {
+			margin-left: 0;
+		}
+
+		.content {
+			padding: 1.5rem;
+		}
+
+		.spaces-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

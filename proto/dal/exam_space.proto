@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package dal;
+
+message ExamSpace {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  string last_updated_at = 4;
+  string token = 5;
+  int64 member_count = 6;
+  int64 paper_count = 7;
+}
+
+message CreateExamSpaceRequest {
+  string name = 1;
+  string description = 2;
+  int64 user_id = 3;
+}
+
+message CreateExamSpaceResponse {
+  int64 id = 1;
+  string token = 2;
+}
+
+message UpdateExamSpaceRequest {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message DeleteExamSpaceRequest {
+  int64 id = 1;
+}
+
+message ListExamSpacesRequest {
+  int64 user_id = 1;
+}
+
+message ListExamSpacesResponse {
+  repeated ExamSpace spaces = 1;
+}
+
+message ExamSpaceMember {
+  int64 id = 1;
+  int64 user_id = 2;
+  int64 exam_space_id = 3;
+  string role = 4;
+  string last_accessed_at = 5;
+}
+
+message AddExamSpaceMemberRequest {
+  int64 user_id = 1;
+  int64 exam_space_id = 2;
+  string role = 3;
+}
+
+message AddExamSpaceMemberResponse {
+  int64 id = 1;
+}
+
+message UpdateExamSpaceMemberRequest {
+  int64 id = 1;
+  string role = 2;
+}
+
+message RemoveExamSpaceMemberRequest {
+  int64 id = 1;
+}
+
+message ListExamSpaceMembersRequest {
+  int64 exam_space_id = 1;
+}
+
+message ListExamSpaceMembersResponse {
+  repeated ExamSpaceMember members = 1;
+}
+
+// Empty message for responses without data
+message Empty {}

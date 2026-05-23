@@ -5,11 +5,11 @@ const siteName = "笔阵";
 const userName = "用户";
 
 const recentPapers = [
-	{ name: "2026年春季期中数学试卷", date: "2026-05-08", status: "published", emoji: "📐" },
-	{ name: "高二物理力学综合测试", date: "2026-05-06", status: "draft", emoji: "🔬" },
-	{ name: "英语阅读理解专项训练", date: "2026-05-03", status: "published", emoji: "📖" },
-	{ name: "化学实验操作考核", date: "2026-04-28", status: "draft", emoji: "🧪" },
-	{ name: "语文古诗词默写练习", date: "2026-04-25", status: "published", emoji: "✍️" },
+	{ token: "550e8400-e29b-41d4-a716-446655440000", name: "2026年春季期中数学试卷", date: "2026-05-08", status: "published", emoji: "📐" },
+	{ token: "6ba7b810-9dad-11d1-80b4-00c04fd430c8", name: "高二物理力学综合测试", date: "2026-05-06", status: "draft", emoji: "🔬" },
+	{ token: "6ba7b811-9dad-11d1-80b4-00c04fd430c8", name: "英语阅读理解专项训练", date: "2026-05-03", status: "published", emoji: "📖" },
+	{ token: "6ba7b812-9dad-11d1-80b4-00c04fd430c8", name: "化学实验操作考核", date: "2026-04-28", status: "draft", emoji: "🧪" },
+	{ token: "6ba7b813-9dad-11d1-80b4-00c04fd430c8", name: "语文古诗词默写练习", date: "2026-04-25", status: "published", emoji: "✍️" },
 ];
 ---
 
@@ -65,7 +65,7 @@ const recentPapers = [
 						</div>
 						<div class="block-content">
 							{recentPapers.map(paper => (
-								<a href={`/doc/${paper.name}`} class="page-row">
+								<a href={`/doc/${paper.token}`} class="page-row">
 									<div class="row-icon">{paper.emoji}</div>
 									<div class="row-content">
 										<span class="row-title">{paper.name}</span>

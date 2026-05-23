@@ -2,7 +2,7 @@
 
 ## 概述
 
-基于 axum + WebSocket 的实时协作文档编辑后端服务。使用 y-octo（Yjs CRDT 的 Rust 实现）管理文档状态，支持多人实时同步编辑。
+基于 axum + WebSocket 的实时协作文档编辑后端服务。使用 y-octo（Yjs CRDT 的 Rust 实现）管理文档状态，支持多人实时同步编辑。WebSocket 连接通过 JWT Cookie 认证。
 
 ## 技术栈
 
@@ -10,7 +10,7 @@
 - **CRDT**: y-octo（Yjs Rust 实现）
 - **异步运行时**: tokio
 - **序列化**: serde / serde_json
-- **认证**: auth-lib（本地 lib）
+- **认证**: auth-lib（JWT Cookie 解析 + AuthClaim extractor）
 
 ## 项目结构
 
@@ -46,18 +46,20 @@ src/
 
 ### 1. 服务入口（main.rs）
 
-- 创建 `AppState`（目前为空，后续会加入 RoomSet 等共享状态）
-- 注册路由 `GET /api/websocket/doc/{token}` → `handler::websocket::websocket_handler`
-- 监听 `0.0.0.0:3000`
+- 注册路由 `GET /api/websocket/doc/{doc_name}` → `handler::websocket::websocket_handler`
+- 路由应用 AuthClaim 中间件，WebSocket 握手前验证 JWT Cookie
+- `AppState` 包含 RoomSet 共享状态和 `Arc<Jot>`（用于 token 验证）
+- 监听 `0.0.0.0:3001`
 
 ### 2. WebSocket Handler（handler/websocket.rs）
 
 WebSocket 连接处理流程：
-1. 从 URL path 中提取 token
-2. 解析 token，创建 mock Principal（含 mock Claim）
-3. 升级 HTTP 连接为 WebSocket
-4. 从 RoomSet 获取或创建 DocRoom
-5. 调用 `biz::handler::handle_sync_stream` 进入同步循环
+1. 从 URL path 提取 `doc_name`
+2. `AuthClaim` extractor 从 Cookie 中解析 JWT token 得到 `Claim`（sub=user_id, name=username）
+3. 根据 `doc_name` + `user_id` 创建 `Principal`
+4. 升级 HTTP 连接为 WebSocket
+5. 从 RoomSet 获取或创建 DocRoom（以 `doc_name` 为 key）
+6. 调用 `biz::handler::handle_sync_stream` 进入同步循环
 
 ### 3. 核心同步流（biz/handler.rs）
 
@@ -70,20 +72,12 @@ WebSocket 连接处理流程：
 ### 4. Principal（biz/principal.rs）
 
 用户主体，包含：
-- `id: u64` - 文档/房间 ID
+- `id: u64` - 文档/房间 ID（基于 doc_name 的 hash）
 - `name: String` - 文档名称
 - `claim: claim::Claim` - JWT Claim（来自 auth-lib）
 - `connection_id: u64` - 连接唯一标识
 
-### 5. Claim（auth-lib）
-
-JWT Claim 结构：
-- `sub: u64` - 用户 ID
-- `name: String` - 用户名
-- `jti: u64` - JWT ID
-- `iss`, `exp`, `aud`, `nbf`, `iat` - 标准 JWT 字段
-
-### 6. RoomSet（biz/room_set.rs）
+### 5. RoomSet（biz/room_set.rs）
 
 房间集合，管理所有活跃的文档房间：
 - 泛型 `M`：与房间关联的业务模型
@@ -92,14 +86,14 @@ JWT Claim 结构：
 - `destory_room(id)` - 销毁房间
 - `recv_callback()` - 接收房间回调（存储、销毁通知）
 
-### 7. DocRoom（biz/room/doc_room.rs）
+### 6. DocRoom（biz/room/doc_room.rs）
 
 房间 Actor，通过 tokio spawn 运行：
 - 接收 `DocCommandMessage`（Join/Sync/Leave）
 - 每 10 秒检查是否需要持久化（`callback_store`）
 - 所有连接断开后自动销毁
 
-### 8. Document（biz/doc/document.rs）
+### 7. Document（biz/doc/document.rs）
 
 文档封装：
 - `doc: Doc` - y-octo CRDT 文档
@@ -107,14 +101,14 @@ JWT Claim 结构：
 - `connections: HashMap<u64, Arc<Mutex<SplitSink>>>` - 活跃连接
 - `version / stored_version` - 版本追踪，用于增量持久化
 
-### 9. 协议层（biz/protocol/）
+### 8. 协议层（biz/protocol/）
 
 实现 yjs 同步协议：
 - **Context trait**：抽象文档操作（unicast/broadcast/close）
 - **handle_message**：解析并处理同步消息（Step1/Step2/Update/Awareness）
 - **消息格式**：`[var_string: doc_name] [var_uint: MessageType] [var_uint: DocMessageType?] [var_buffer: payload?]`
 
-### 10. 同步流程
+### 9. 同步流程
 
 ```
 Client                    Server
@@ -132,9 +126,25 @@ Client                    Server
   |<-- Update ----------------|  其他客户端的编辑广播
 ```
 
+## 认证机制
+
+- WebSocket 握手通过 HTTP 协议升级，因此可以在升级前通过 `AuthClaim` 中间件验证 JWT
+- JWT Token 来自 HttpOnly Cookie（由 BFF 登录时写入，Nginx 透传）
+- `AuthClaim` extractor 从 Cookie 中提取 `token` 并用 `Jot` 解码得到 `Claim`
+- 未登录用户请求 WebSocket 时会直接返回 401，不会升级连接
+
+## 部署架构
+
+用户浏览器通过 Nginx 访问：
+
+```
+Browser ── wss://域名/api/websocket/doc/{name} ──▶ Nginx :8080 ──▶ real_time :3001
+```
+
+Nginx 配置中 `/api/websocket/` 路径需要开启 WebSocket proxy（`proxy_set_header Upgrade/Connection`）。
+
 ## 待实现
 
-- [ ] WebSocket handler 中 token 的真实解析（目前 mock）
-- [ ] RoomSet 的泛型 M 确定具体类型
 - [ ] 文档持久化回调的实际存储逻辑
 - [ ] 错误日志完善（目前多处 TODO）
+- [ ] 文档关闭时的自动保存

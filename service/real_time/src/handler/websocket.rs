@@ -3,7 +3,7 @@ use std::sync::{
     Arc,
 };
 
-use auth_lib::claim::Claim;
+use auth_lib::AuthClaim;
 use axum::{
     extract::{ws::WebSocketUpgrade, Path, State},
     response::IntoResponse,
@@ -11,7 +11,7 @@ use axum::{
 
 use crate::{
     biz::{handler::handle_sync_stream, principal::Principal, room::cmd::DocRoomCommand},
-    AppState,
+    AppJotProvider, AppState,
 };
 
 static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -20,11 +20,10 @@ pub async fn websocket_handler(
     Path(token): Path<String>,
     State(state): State<Arc<AppState>>,
     ws: WebSocketUpgrade,
+    AuthClaim(claim, _): AuthClaim<AppJotProvider>,
 ) -> impl IntoResponse {
-    let (doc_id, user_id, user_name) = (1, 1, "mock_user".to_string());
-
+    let doc_id = 1;
     let connection_id = CONNECTION_COUNTER.fetch_add(1, Ordering::SeqCst);
-    let claim = Claim::new(user_id, user_name, connection_id);
     let principal = Principal::new(doc_id, token, claim, connection_id);
 
     ws.on_upgrade(move |ws| async move {

@@ -5,10 +5,12 @@ use axum::{
     http::{header, StatusCode, HeaderValue, HeaderMap},
     Json,
 };
-use axum_extra::extract::cookie::{Cookie, CookieJar};
+use axum_extra::extract::cookie::Cookie;
+use auth_lib::AuthClaim;
 use serde::{Deserialize, Serialize};
 
 use crate::rpcclient::dal::{LoginByEmailRequest, RegisterRequest};
+use crate::AppJotProvider;
 use crate::AppState;
 
 const TOKEN_COOKIE_NAME: &str = "token";
@@ -106,22 +108,8 @@ pub struct MeResult {
 }
 
 pub async fn me(
-    State(state): State<Arc<AppState>>,
-    jar: CookieJar,
+    AuthClaim(claim, _): AuthClaim<AppJotProvider>,
 ) -> Result<Json<MeResult>, (StatusCode, String)> {
-    let token = jar
-        .get(TOKEN_COOKIE_NAME)
-        .map(|c| c.value().to_owned())
-        .ok_or((StatusCode::UNAUTHORIZED, "未登录".to_string()))?;
-
-    let claim = state
-        .jot
-        .decode(&token)
-        .map_err(|e| {
-            tracing::error!("Token decode error: {:?}", e);
-            (StatusCode::UNAUTHORIZED, format!("token 无效或已过期: {}", e))
-        })?;
-
     Ok(Json(MeResult {
         user_id: claim.get_subject(),
         username: claim.get_name().to_owned(),

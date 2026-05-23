@@ -1,20 +1,41 @@
 mod rpcclient;
 mod config;
+mod graphql;
 mod handler;
 
 use std::sync::Arc;
 
-use axum::Router;
+use axum::{extract::FromRequestParts, Router};
 use tracing::info;
 
-use auth_lib::jot::Jot;
+use auth_lib::{jot::Jot, JotProvider};
 
 use crate::config::Config;
 use crate::rpcclient::DalClient;
 
 pub struct AppState {
     pub dal: DalClient,
-    pub jot: Jot,
+    pub jot: Arc<Jot>,
+}
+
+pub struct AppJotProvider(JotProvider);
+
+impl FromRequestParts<Arc<AppState>> for AppJotProvider {
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(
+        _parts: &mut axum::http::request::Parts,
+        state: &Arc<AppState>,
+    ) -> Result<Self, Self::Rejection> {
+        Ok(AppJotProvider(JotProvider(state.jot.clone())))
+    }
+}
+
+impl std::ops::Deref for AppJotProvider {
+    type Target = Jot;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 #[tokio::main]
@@ -31,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let pkey = std::fs::read("../../keys/ed25519_private.pem")?;
     let pubkey = std::fs::read("../../keys/ed25519_public.pem")?;
-    let jot = Jot::new(&pkey, &pubkey).expect("Failed to create Jot from keys");
+    let jot = Arc::new(Jot::new(&pkey, &pubkey).expect("Failed to create Jot from keys"));
 
     let dal = DalClient::connect(config.dal.addr.clone()).await?;
     info!("Connected to dal service at {}", config.dal.addr);

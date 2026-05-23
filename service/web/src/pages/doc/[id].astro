@@ -5,11 +5,9 @@ import TiptapEditor from '../../components/TiptapEditor.astro';
 export function getStaticPaths() {
   return [
     { params: { id: 'new' } },
-    { params: { id: '2026年春季期中数学试卷' } },
-    { params: { id: '高二物理力学综合测试' } },
-    { params: { id: '英语阅读理解专项训练' } },
-    { params: { id: '化学实验操作考核' } },
-    { params: { id: '语文古诗词默写练习' } },
+    { params: { id: 'AAAAAAGD0Jw' } },
+    { params: { id: 'AAAAAAGD0Jx' } },
+    { params: { id: 'AAAAAAGD0Jy' } },
   ];
 }
 
@@ -78,7 +76,7 @@ const initialContent = id === 'new'
           <div class="doc-container">
             <div class="doc-title" contenteditable="true" data-placeholder="试卷标题">{id === 'new' ? '新建试卷' : id}</div>
 
-            <TiptapEditor content={initialContent} docName={id} wsUrl="localhost:3000" placeholder="输入 / 以使用命令..." class="doc-editor" />
+            <TiptapEditor content={initialContent} docName={id} placeholder="输入 / 以使用命令..." class="doc-editor" />
           </div>
 
           <aside class="doc-annotations" id="docAnnotations">

@@ -3,8 +3,21 @@ syntax = "proto3";
 package dal;
 
 import "dal/auth.proto";
+import "dal/exam_space.proto";
 
 service DalService {
   rpc Register(RegisterRequest) returns (RegisterResponse);
   rpc LoginByEmail(LoginByEmailRequest) returns (LoginByEmailResponse);
+
+  // exam_space
+  rpc CreateExamSpace(CreateExamSpaceRequest) returns (CreateExamSpaceResponse);
+  rpc UpdateExamSpace(UpdateExamSpaceRequest) returns (Empty);
+  rpc DeleteExamSpace(DeleteExamSpaceRequest) returns (Empty);
+  rpc ListExamSpacesByUser(ListExamSpacesRequest) returns (ListExamSpacesResponse);
+
+  // exam_space_member
+  rpc AddExamSpaceMember(AddExamSpaceMemberRequest) returns (AddExamSpaceMemberResponse);
+  rpc UpdateExamSpaceMember(UpdateExamSpaceMemberRequest) returns (Empty);
+  rpc RemoveExamSpaceMember(RemoveExamSpaceMemberRequest) returns (Empty);
+  rpc ListExamSpaceMembers(ListExamSpaceMembersRequest) returns (ListExamSpaceMembersResponse);
 }

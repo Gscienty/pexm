@@ -7,3 +7,6 @@ edition = "2024"
 jsonwebtoken = { version = "10.4.0", features = ["aws_lc_rs"] }
 ring = "0.17.14"
 serde = { version = "1.0.228", features = ["derive"] }
+axum = "0.8"
+axum-extra = { version = "0.10", features = ["cookie"] }
+tracing = "0.1"
