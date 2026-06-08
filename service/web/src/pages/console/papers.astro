@@ -95,17 +95,27 @@ const siteName = "笔阵";
 			}
 		}
 
-		async function fetchSpaces(): Promise<ExamSpace[]> {
+		interface SpaceConnection {
+			edges: { node: ExamSpace; cursor: string }[];
+			pageInfo: { hasNextPage: boolean; endCursor: string };
+		}
+
+		interface SpacesResult {
+			Connection?: SpaceConnection;
+			Payload?: { space: ExamSpace | null };
+		}
+
+		async function fetchSpaces(after?: string): Promise<{ spaces: ExamSpace[]; hasNext: boolean; endCursor: string }> {
 			const query = `
-				query {
-					myExamSpaces {
-						id
-						token
-						name
-						description
-						lastUpdatedAt
-						memberCount
-						paperCount
+				query($first: Int, $after: String) {
+					examSpaces(first: $first, after: $after) {
+						... on GqlExamSpaceConnection {
+							edges { node { id token name description lastUpdatedAt memberCount paperCount } cursor }
+							pageInfo { hasNextPage endCursor }
+						}
+						... on GqlExamSpacePayload {
+							space { id token name description lastUpdatedAt memberCount paperCount }
+						}
 					}
 				}
 			`;
@@ -113,15 +123,27 @@ const siteName = "笔阵";
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ query }),
+				body: JSON.stringify({ query, variables: { first: 20, after: after ?? null } }),
 			});
 			if (!res.ok) throw new Error('Failed to fetch spaces');
 			const json = await res.json();
 			if (json.errors) throw new Error(json.errors[0]?.message || 'GraphQL error');
-			return json.data?.myExamSpaces || [];
+			const data = json.data?.examSpaces;
+			// Union: inline fragments flatten fields to same level
+			if (data?.edges) {
+				return {
+					spaces: data.edges.map(e => e.node),
+					hasNext: data.pageInfo?.hasNextPage ?? false,
+					endCursor: data.pageInfo?.endCursor ?? '',
+				};
+			}
+			if (data?.space) {
+				return { spaces: [data.space], hasNext: false, endCursor: '' };
+			}
+			return { spaces: [], hasNext: false, endCursor: '' };
 		}
 
-		async function createSpace(name: string, description: string): Promise<number> {
+		async function createSpace(name: string, description: string): Promise<{ id: number; token: string }> {
 			const res = await fetch(`${BFF_BASE}/api/exam-spaces`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -133,7 +155,7 @@ const siteName = "笔阵";
 				throw new Error(err || '创建失败');
 			}
 			const json = await res.json();
-			return json.id;
+			return json as { id: number; token: string };
 		}
 
 		function formatDate(dateStr: string): string {
@@ -158,7 +180,7 @@ const siteName = "笔阵";
 			empty.style.display = 'none';
 			grid.style.display = 'grid';
 			grid.innerHTML = spaces.map(s => `
-				<a href="/doc/${encodeURIComponent(s.token)}" class="space-card">
+				<a href="/space/${encodeURIComponent(s.token)}" class="space-card">
 					<div class="space-card-header">
 						<span class="space-card-icon">📐</span>
 						<span class="space-card-name">${escapeHtml(s.name)}</span>
@@ -203,7 +225,7 @@ const siteName = "笔阵";
 			if (!username) return;
 
 			try {
-				const spaces = await fetchSpaces();
+				const { spaces } = await fetchSpaces();
 				renderSpaces(spaces);
 			} catch (e) {
 				document.getElementById('loading')!.style.display = 'none';
@@ -237,10 +259,8 @@ const siteName = "笔阵";
 				submitBtn.disabled = true;
 				submitBtn.textContent = '创建中...';
 				try {
-					await createSpace(name, description);
-					closeModal();
-					const spaces = await fetchSpaces();
-					renderSpaces(spaces);
+					const result = await createSpace(name, description);
+					window.location.href = `/space/${encodeURIComponent(result.token)}`;
 				} catch (err: any) {
 					errorEl.textContent = err.message || '创建失败';
 					errorEl.style.display = 'block';

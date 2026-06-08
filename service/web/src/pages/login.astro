@@ -130,7 +130,7 @@ const siteName = "笔阵";
 					window.location.href = '/console';
 				} else {
 					const data = await res.json();
-					showError(data.message || data.error || '登录失败，请检查邮箱和密码');
+					showError(data.error || '登录失败，请检查邮箱和密码');
 				}
 			} catch {
 				showError('网络错误，请稍后重试');

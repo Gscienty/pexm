@@ -27,10 +27,15 @@ pub struct RegisterResult {
     pub user_id: i64,
 }
 
+#[derive(Serialize)]
+pub struct RegisterError {
+    pub error: String,
+}
+
 pub async fn register(
     State(state): State<Arc<AppState>>,
     Json(body): Json<RegisterBody>,
-) -> Result<(StatusCode, Json<RegisterResult>), (StatusCode, String)> {
+) -> Result<(StatusCode, Json<RegisterResult>), (StatusCode, Json<RegisterError>)> {
     let mut client = state.dal.clone();
     let response = client
         .register(RegisterRequest {
@@ -39,7 +44,7 @@ pub async fn register(
             password: body.password,
         })
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(RegisterError { error: e.to_string() })))?;
 
     let inner = response.into_inner();
     Ok((StatusCode::CREATED, Json(RegisterResult { user_id: inner.user_id })))
@@ -57,10 +62,15 @@ pub struct LoginResult {
     pub username: String,
 }
 
+#[derive(Serialize)]
+pub struct LoginError {
+    pub error: String,
+}
+
 pub async fn login(
     State(state): State<Arc<AppState>>,
     Json(body): Json<LoginBody>,
-) -> Result<(StatusCode, HeaderMap, Json<LoginResult>), (StatusCode, String)> {
+) -> Result<(StatusCode, HeaderMap, Json<LoginResult>), (StatusCode, Json<LoginError>)> {
     let mut client = state.dal.clone();
     let response = client
         .login_by_email(LoginByEmailRequest {
@@ -70,9 +80,9 @@ pub async fn login(
         .await
         .map_err(|e| {
             if e.code() == tonic::Code::Unauthenticated {
-                (StatusCode::UNAUTHORIZED, e.to_string())
+                (StatusCode::UNAUTHORIZED, Json(LoginError { error: "用户名或密码错误".into() }))
             } else {
-                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(LoginError { error: e.to_string() }))
             }
         })?;
 
@@ -99,6 +109,23 @@ pub async fn login(
             username: inner.username,
         }),
     ))
+}
+
+pub async fn logout() -> (StatusCode, HeaderMap) {
+    let cookie = Cookie::build((TOKEN_COOKIE_NAME, ""))
+        .http_only(true)
+        .same_site(axum_extra::extract::cookie::SameSite::Lax)
+        .path("/")
+        .max_age(time::Duration::ZERO)
+        .build();
+
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::SET_COOKIE,
+        HeaderValue::from_str(&cookie.to_string()).unwrap(),
+    );
+
+    (StatusCode::OK, headers)
 }
 
 #[derive(Serialize)]

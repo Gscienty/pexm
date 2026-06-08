@@ -21,3 +21,31 @@ CREATE TABLE IF NOT EXISTS exam_space_members (
     last_accessed_at DATETIME,
     UNIQUE (user_id, exam_space_id)
 );
+
+CREATE TABLE IF NOT EXISTS directories (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    exam_space_id   INTEGER NOT NULL,
+    parent_id       INTEGER,
+    name            TEXT NOT NULL,
+    created_at      DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at      DATETIME NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (exam_space_id) REFERENCES exam_spaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES directories(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_directories_exam_space_id ON directories(exam_space_id);
+CREATE INDEX IF NOT EXISTS idx_directories_parent_id ON directories(parent_id);
+
+CREATE TABLE IF NOT EXISTS papers (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    exam_space_id   INTEGER NOT NULL,
+    directory_id    INTEGER,
+    title           TEXT NOT NULL,
+    created_at      DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at      DATETIME NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (exam_space_id) REFERENCES exam_spaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (directory_id) REFERENCES directories(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_papers_exam_space_id ON papers(exam_space_id);
+CREATE INDEX IF NOT EXISTS idx_papers_directory_id ON papers(directory_id);

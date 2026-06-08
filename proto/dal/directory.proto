@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package dal;
+
+message Directory {
+  int64 id = 1;
+  int64 exam_space_id = 2;
+  int64 parent_id = 3;       // 0 means root
+  string name = 4;
+  string created_at = 5;
+  string updated_at = 6;
+}
+
+message Paper {
+  int64 id = 1;
+  int64 exam_space_id = 2;
+  int64 directory_id = 3;    // 0 means root
+  string title = 4;
+  string created_at = 5;
+  string updated_at = 6;
+}
+
+// --- Directory CRUD ---
+
+message CreateDirectoryRequest {
+  int64 exam_space_id = 1;
+  int64 parent_id = 2;       // 0 means root
+  string name = 3;
+}
+
+message CreateDirectoryResponse {
+  int64 id = 1;
+}
+
+message UpdateDirectoryRequest {
+  int64 id = 1;
+  string name = 2;
+}
+
+message DeleteDirectoryRequest {
+  int64 id = 1;
+}
+
+message MoveDirectoryRequest {
+  int64 id = 1;
+  int64 new_parent_id = 2;   // 0 means root
+}
+
+// List children (sub-directories + papers) of a directory
+message ListDirectoryChildrenRequest {
+  int64 exam_space_id = 1;
+  int64 parent_id = 2;       // 0 means root
+}
+
+message ListDirectoryChildrenResponse {
+  repeated Directory directories = 1;
+  repeated Paper papers = 2;
+}
+
+// Get breadcrumb path from root to a directory
+message GetDirectoryBreadcrumbRequest {
+  int64 directory_id = 1;
+}
+
+message GetDirectoryBreadcrumbResponse {
+  repeated DirectoryBreadcrumbItem items = 1;
+}
+
+message DirectoryBreadcrumbItem {
+  int64 id = 1;
+  string name = 2;
+}
+
+// Get breadcrumb path from root to a paper
+message GetPaperBreadcrumbRequest {
+  int64 paper_id = 1;
+}
+
+message GetPaperBreadcrumbResponse {
+  repeated DirectoryBreadcrumbItem directory_items = 1;
+  Paper paper = 2;
+}
+
+// --- Paper CRUD ---
+
+message CreatePaperRequest {
+  int64 exam_space_id = 1;
+  int64 directory_id = 2;    // 0 means root
+  string title = 3;
+}
+
+message CreatePaperResponse {
+  int64 id = 1;
+}
+
+message UpdatePaperRequest {
+  int64 id = 1;
+  string title = 2;
+}
+
+message DeletePaperRequest {
+  int64 id = 1;
+}
+
+message MovePaperRequest {
+  int64 id = 1;
+  int64 new_directory_id = 2; // 0 means root
+}

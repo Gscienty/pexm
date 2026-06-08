@@ -228,8 +228,10 @@ const siteName = "笔阵";
 
 		document.getElementById('navLogout')!.addEventListener('click', async (e) => {
 			e.preventDefault();
-			document.cookie = 'token=; path=/; max-age=0';
-			window.location.reload();
+			try {
+				await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+			} catch {}
+			window.location.href = '/login';
 		});
 	</script>
 	</body>

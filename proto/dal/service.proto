@@ -4,6 +4,7 @@ package dal;
 
 import "dal/auth.proto";
 import "dal/exam_space.proto";
+import "dal/directory.proto";
 
 service DalService {
   rpc Register(RegisterRequest) returns (RegisterResponse);
@@ -14,10 +15,26 @@ service DalService {
   rpc UpdateExamSpace(UpdateExamSpaceRequest) returns (Empty);
   rpc DeleteExamSpace(DeleteExamSpaceRequest) returns (Empty);
   rpc ListExamSpacesByUser(ListExamSpacesRequest) returns (ListExamSpacesResponse);
+  rpc GetExamSpaceByToken(GetExamSpaceByTokenRequest) returns (GetExamSpaceByTokenResponse);
 
   // exam_space_member
   rpc AddExamSpaceMember(AddExamSpaceMemberRequest) returns (AddExamSpaceMemberResponse);
   rpc UpdateExamSpaceMember(UpdateExamSpaceMemberRequest) returns (Empty);
   rpc RemoveExamSpaceMember(RemoveExamSpaceMemberRequest) returns (Empty);
   rpc ListExamSpaceMembers(ListExamSpaceMembersRequest) returns (ListExamSpaceMembersResponse);
+
+  // directory
+  rpc CreateDirectory(CreateDirectoryRequest) returns (CreateDirectoryResponse);
+  rpc UpdateDirectory(UpdateDirectoryRequest) returns (Empty);
+  rpc DeleteDirectory(DeleteDirectoryRequest) returns (Empty);
+  rpc MoveDirectory(MoveDirectoryRequest) returns (Empty);
+  rpc ListDirectoryChildren(ListDirectoryChildrenRequest) returns (ListDirectoryChildrenResponse);
+  rpc GetDirectoryBreadcrumb(GetDirectoryBreadcrumbRequest) returns (GetDirectoryBreadcrumbResponse);
+
+  // paper
+  rpc CreatePaper(CreatePaperRequest) returns (CreatePaperResponse);
+  rpc UpdatePaper(UpdatePaperRequest) returns (Empty);
+  rpc DeletePaper(DeletePaperRequest) returns (Empty);
+  rpc MovePaper(MovePaperRequest) returns (Empty);
+  rpc GetPaperBreadcrumb(GetPaperBreadcrumbRequest) returns (GetPaperBreadcrumbResponse);
 }

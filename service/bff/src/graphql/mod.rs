@@ -1,8 +1,8 @@
 pub mod query;
 pub mod types;
 
-use async_graphql::{EmptyMutation, EmptySubscription, Schema};
+use async_graphql::{EmptySubscription, Schema};
 
-use query::Query;
+use query::{Query, Mutation};
 
-pub type AppSchema = Schema<Query, EmptyMutation, EmptySubscription>;
+pub type AppSchema = Schema<Query, Mutation, EmptySubscription>;

@@ -17,6 +17,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/api/auth/register", post(auth::register))
         .route("/api/auth/login", post(auth::login))
         .route("/api/auth/me", get(auth::me))
+        .route("/api/auth/logout", post(auth::logout))
         .route("/api/exam-spaces", post(exam_space::create_exam_space))
         .route("/api/graphql", post(graphql::graphql_handler))
         .with_state(state)

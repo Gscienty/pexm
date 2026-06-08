@@ -35,10 +35,22 @@ message DeleteExamSpaceRequest {
 
 message ListExamSpacesRequest {
   int64 user_id = 1;
+  string after_token = 2;
+  int64 first = 3;
 }
 
 message ListExamSpacesResponse {
   repeated ExamSpace spaces = 1;
+  bool has_next_page = 4;
+  string end_cursor = 5;
+}
+
+message GetExamSpaceByTokenRequest {
+  string token = 1;
+}
+
+message GetExamSpaceByTokenResponse {
+  ExamSpace space = 1;
 }
 
 message ExamSpaceMember {
@@ -47,6 +59,7 @@ message ExamSpaceMember {
   int64 exam_space_id = 3;
   string role = 4;
   string last_accessed_at = 5;
+  string username = 6;
 }
 
 message AddExamSpaceMemberRequest {

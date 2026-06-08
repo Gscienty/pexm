@@ -3,7 +3,7 @@ use std::sync::Arc;
 use auth_lib::AuthClaim;
 use axum::{extract::State, response::IntoResponse};
 
-use crate::graphql::{query::Query, AppSchema};
+use crate::graphql::{query::{Query, Mutation}, AppSchema};
 use crate::{AppJotProvider, AppState};
 
 pub async fn graphql_handler(
@@ -13,7 +13,7 @@ pub async fn graphql_handler(
 ) -> impl IntoResponse {
     let schema = AppSchema::build(
         Query,
-        async_graphql::EmptyMutation,
+        Mutation,
         async_graphql::EmptySubscription,
     )
     .data(claim)

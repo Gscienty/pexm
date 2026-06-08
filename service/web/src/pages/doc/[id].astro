@@ -1,40 +1,20 @@
 ---
+export const prerender = false;
+
 import Sidebar from '../../components/console/Sidebar.astro';
 import TiptapEditor from '../../components/TiptapEditor.astro';
 
-export function getStaticPaths() {
-  return [
-    { params: { id: 'new' } },
-    { params: { id: 'AAAAAAGD0Jw' } },
-    { params: { id: 'AAAAAAGD0Jx' } },
-    { params: { id: 'AAAAAAGD0Jy' } },
-  ];
-}
-
-const { id } = Astro.params;
-
 const siteName = "笔阵";
-
-const initialContent = id === 'new'
-  ? '<h1>新建试卷</h1><p>开始编辑您的试卷内容...</p>'
-  : `<h1>2026年春季期中数学试卷</h1>
-<p>本试卷共分为三个部分，满分150分，考试时间120分钟。</p>
-<h2>第一部分：选择题（共50分）</h2>
-<ul><li>每小题5分，共10小题</li><li>请将正确答案填写在答题卡上</li></ul>
-<h2>第二部分：填空题（共40分）</h2>
-<ol><li>每小题4分，共10小题</li><li>答案写在横线上</li><li>必须使用黑色签字笔书写</li></ol>
-<h2>第三部分：解答题（共60分）</h2>
-<p>解答应写出文字说明、证明过程或演算步骤。</p>
-<blockquote>⚠️ 注意：请保持卷面整洁，书写工整。</blockquote>`;
-
+const { id } = Astro.params;
 ---
 
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{id === 'new' ? '新建试卷' : id} - {siteName}</title>
+    <title>试卷 - {siteName}</title>
   </head>
   <body>
     <Sidebar activePath="/console/papers" />
@@ -42,23 +22,15 @@ const initialContent = id === 'new'
     <div class="doc-layout">
       <header class="doc-header">
         <div class="doc-header-content">
-          <nav class="doc-breadcrumb">
+          <nav class="doc-breadcrumb" id="docBreadcrumb">
             <a href="/console" class="breadcrumb-link">控制台</a>
             <span class="breadcrumb-sep">/</span>
             <a href="/console/papers" class="breadcrumb-link">试卷空间</a>
             <span class="breadcrumb-sep">/</span>
-            <span class="breadcrumb-current">{id === 'new' ? '新建试卷' : id}</span>
+            <span class="breadcrumb-current" id="breadcrumbTitle">加载中...</span>
           </nav>
           <div class="doc-actions">
-            <button class="action-btn">
-              <span class="action-icon">📋</span>
-              分享
-            </button>
-            <button class="action-btn">
-              <span class="action-icon">❤️</span>
-              收藏
-            </button>
-            <button class="action-btn primary">
+            <button class="action-btn primary" id="btnSave">
               <span class="action-icon">💾</span>
               保存
             </button>
@@ -74,9 +46,9 @@ const initialContent = id === 'new'
           </aside>
 
           <div class="doc-container">
-            <div class="doc-title" contenteditable="true" data-placeholder="试卷标题">{id === 'new' ? '新建试卷' : id}</div>
+            <div class="doc-title" contenteditable="true" data-placeholder="试卷标题" id="docTitle"></div>
 
-            <TiptapEditor content={initialContent} docName={id} placeholder="输入 / 以使用命令..." class="doc-editor" />
+            <TiptapEditor content="" docName={id || 'new'} placeholder="输入 / 以使用命令..." class="doc-editor" />
           </div>
 
           <aside class="doc-annotations" id="docAnnotations">
@@ -88,119 +60,227 @@ const initialContent = id === 'new'
         </div>
       </main>
     </div>
-  </body>
-</html>
 
-<script>
-  const docTitle = document.querySelector('.doc-title');
-  const siteName = "笔阵";
-  let isComposing = false;
+  <script>
+    const BFF_BASE = '';
+    const paperId = window.location.pathname.split('/').pop() || '';
+    const urlParams = new URLSearchParams(window.location.search);
+    const spaceToken = urlParams.get('space') || '';
+    const siteName = "笔阵";
+    let isComposing = false;
+    let currentSpaceToken = spaceToken;
 
-  if (docTitle) {
-    const updateTitles = () => {
-      const text = docTitle.textContent?.trim() || '';
-      if (!text) {
-        docTitle.innerHTML = '';
-      }
-      const title = text || '未命名试卷';
-      document.title = `${title} - ${siteName}`;
-      const breadcrumbCurrent = document.querySelector('.breadcrumb-current');
-      if (breadcrumbCurrent) {
-        breadcrumbCurrent.textContent = title;
-      }
-    };
-
-    docTitle.addEventListener('input', updateTitles);
-
-    updateTitles();
-
-    docTitle.addEventListener('compositionstart', () => {
-      isComposing = true;
-    });
-
-    docTitle.addEventListener('compositionend', () => {
-      isComposing = false;
-    });
-
-    docTitle.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !isComposing) {
-        e.preventDefault();
-        const editor = document.querySelector('.ProseMirror');
-        if (editor instanceof HTMLElement) {
-          editor.focus();
-        }
-      }
-    });
-  }
-
-  const outlineList = document.getElementById('outlineList');
-  const docMain = document.querySelector('.doc-main');
-
-  function renderOutline(headings: { id: string; text: string; level: number }[]) {
-    if (!outlineList) return;
-
-    if (headings.length === 0) {
-      outlineList.innerHTML = '<li class="outline-empty">暂无标题</li>';
-      return;
+    async function graphqlRequest(query, variables = {}) {
+      const res = await fetch(`${BFF_BASE}/api/graphql`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ query, variables }),
+      });
+      if (!res.ok) throw new Error('网络错误');
+      const json = await res.json();
+      if (json.errors) throw new Error(json.errors[0]?.message || 'GraphQL 错误');
+      return json.data;
     }
 
-    outlineList.innerHTML = headings
-      .map((h) => {
+    async function checkAuth() {
+      try {
+        const res = await fetch(`${BFF_BASE}/api/auth/me`, { credentials: 'include' });
+        if (!res.ok) { window.location.href = '/login'; return null; }
+        return res.json();
+      } catch {
+        window.location.href = '/login';
+        return null;
+      }
+    }
+
+    async function loadPaperBreadcrumb(paperId) {
+      const data = await graphqlRequest(`query($paperId: Int!) { paperBreadcrumb(paperId: $paperId) { directoryItems { id name } paper { id examSpaceId directoryId title } } }`, { paperId: parseInt(paperId) });
+      return data?.paperBreadcrumb || null;
+    }
+
+    async function loadSpaceByToken(token) {
+      const data = await graphqlRequest(`query($token: String) { examSpaces(token: $token) { ... on GqlExamSpacePayload { space { id token name } } } }`, { token });
+      return data?.examSpaces?.space || null;
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    async function initBreadcrumb() {
+      const breadcrumb = document.getElementById('docBreadcrumb')!;
+      const titleEl = document.getElementById('breadcrumbTitle')!;
+
+      // If new paper with space context
+      if (paperId === 'new' && currentSpaceToken) {
+        try {
+          const space = await loadSpaceByToken(currentSpaceToken);
+          if (space) {
+            breadcrumb.innerHTML = `
+              <a href="/console" class="breadcrumb-link">控制台</a>
+              <span class="breadcrumb-sep">/</span>
+              <a href="/console/papers" class="breadcrumb-link">试卷空间</a>
+              <span class="breadcrumb-sep">/</span>
+              <a href="/space/${encodeURIComponent(space.token)}" class="breadcrumb-link">${escapeHtml(space.name)}</a>
+              <span class="breadcrumb-sep">/</span>
+              <span class="breadcrumb-current">新建试卷</span>`;
+            titleEl.textContent = '新建试卷';
+            document.title = `新建试卷 - ${siteName}`;
+            const docTitle = document.getElementById('docTitle');
+            if (docTitle) docTitle.textContent = '新建试卷';
+          }
+        } catch (e) {
+          console.error('load space error:', e);
+        }
+        return;
+      }
+
+      // Existing paper - load breadcrumb
+      if (paperId && paperId !== 'new') {
+        try {
+          const result = await loadPaperBreadcrumb(paperId);
+          if (result && result.paper) {
+            const paper = result.paper;
+            const dirItems = result.directoryItems || [];
+
+            // Load space info
+            let spaceLink = '';
+            if (currentSpaceToken) {
+              const space = await loadSpaceByToken(currentSpaceToken);
+              if (space) {
+                spaceLink = `<a href="/space/${encodeURIComponent(space.token)}" class="breadcrumb-link">${escapeHtml(space.name)}</a><span class="breadcrumb-sep">/</span>`;
+                currentSpaceToken = space.token;
+              }
+            }
+
+            // Build directory breadcrumb - each item links to its directory level
+            let dirHtml = dirItems.map(item =>
+              `<a href="/space/${encodeURIComponent(currentSpaceToken)}?dir=${item.id}" class="breadcrumb-link">${escapeHtml(item.name)}</a><span class="breadcrumb-sep">/</span>`
+            ).join('');
+
+            breadcrumb.innerHTML = `
+              <a href="/console" class="breadcrumb-link">控制台</a>
+              <span class="breadcrumb-sep">/</span>
+              <a href="/console/papers" class="breadcrumb-link">试卷空间</a>
+              <span class="breadcrumb-sep">/</span>
+              ${spaceLink}${dirHtml}<span class="breadcrumb-current">${escapeHtml(paper.title)}</span>`;
+
+            document.title = `${paper.title} - ${siteName}`;
+            const docTitle = document.getElementById('docTitle');
+            if (docTitle) docTitle.textContent = paper.title;
+          }
+        } catch (e) {
+          console.error('load breadcrumb error:', e);
+          titleEl.textContent = paperId;
+        }
+      }
+    }
+
+    // Title editing
+    const docTitle = document.querySelector('.doc-title');
+    if (docTitle) {
+      const updateTitles = () => {
+        const text = docTitle.textContent?.trim() || '';
+        if (!text) {
+          docTitle.innerHTML = '';
+        }
+        const title = text || '未命名试卷';
+        document.title = `${title} - ${siteName}`;
+        const breadcrumbCurrent = document.querySelector('.breadcrumb-current');
+        if (breadcrumbCurrent) {
+          breadcrumbCurrent.textContent = title;
+        }
+      };
+
+      docTitle.addEventListener('input', updateTitles);
+      updateTitles();
+
+      docTitle.addEventListener('compositionstart', () => { isComposing = true; });
+      docTitle.addEventListener('compositionend', () => { isComposing = false; });
+
+      docTitle.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !isComposing) {
+          e.preventDefault();
+          const editor = document.querySelector('.ProseMirror');
+          if (editor instanceof HTMLElement) {
+            editor.focus();
+          }
+        }
+      });
+    }
+
+    // Outline
+    const outlineList = document.getElementById('outlineList');
+    const docMain = document.querySelector('.doc-main');
+
+    function renderOutline(headings) {
+      if (!outlineList) return;
+      if (headings.length === 0) {
+        outlineList.innerHTML = '<li class="outline-empty">暂无标题</li>';
+        return;
+      }
+      outlineList.innerHTML = headings.map(h => {
         const indent = h.level - 1;
         return `<li class="outline-item" data-id="${h.id}" style="padding-left: ${indent * 12 + 8}px">
           <a href="#${h.id}" class="outline-link">${h.text || '未命名'}</a>
         </li>`;
-      })
-      .join('');
+      }).join('');
 
-    outlineList.querySelectorAll('.outline-link').forEach((link) => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const id = (link.closest('.outline-item') as HTMLElement)?.dataset.id;
-        if (!id) return;
-        const target = document.getElementById(id);
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      });
-    });
-  }
-
-  document.addEventListener('headings-change', ((e: CustomEvent) => {
-    renderOutline(e.detail.headings);
-  }) as EventListener);
-
-  let currentActiveId = '';
-  function updateActiveHeading() {
-    if (!outlineList) return;
-    const items = outlineList.querySelectorAll('.outline-item');
-    if (items.length === 0) return;
-
-    let activeId = '';
-    items.forEach((item) => {
-      const id = (item as HTMLElement).dataset.id;
-      if (!id) return;
-      const el = document.getElementById(id);
-      if (el) {
-        const rect = el.getBoundingClientRect();
-        if (rect.top <= 120) {
-          activeId = id;
-        }
-      }
-    });
-
-    if (activeId !== currentActiveId) {
-      currentActiveId = activeId;
-      items.forEach((item) => {
-        item.classList.toggle('active', (item as HTMLElement).dataset.id === activeId);
+      outlineList.querySelectorAll('.outline-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const id = (link.closest('.outline-item') as HTMLElement)?.dataset.id;
+          if (!id) return;
+          const target = document.getElementById(id);
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
       });
     }
-  }
 
-  if (docMain) {
-    docMain.addEventListener('scroll', updateActiveHeading, { passive: true });
-  }
-</script>
+    document.addEventListener('headings-change', ((e) => {
+      renderOutline(e.detail.headings);
+    }));
+
+    let currentActiveId = '';
+    function updateActiveHeading() {
+      if (!outlineList) return;
+      const items = outlineList.querySelectorAll('.outline-item');
+      if (items.length === 0) return;
+      let activeId = '';
+      items.forEach(item => {
+        const id = (item as HTMLElement).dataset.id;
+        if (!id) return;
+        const el = document.getElementById(id);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= 120) activeId = id;
+        }
+      });
+      if (activeId !== currentActiveId) {
+        currentActiveId = activeId;
+        items.forEach(item => {
+          item.classList.toggle('active', (item as HTMLElement).dataset.id === activeId);
+        });
+      }
+    }
+
+    if (docMain) {
+      docMain.addEventListener('scroll', updateActiveHeading, { passive: true });
+    }
+
+    // Init
+    async function init() {
+      await checkAuth();
+      await initBreadcrumb();
+    }
+
+    init();
+  </script>
+  </body>
+</html>
 
 <style>
   :root {
@@ -213,8 +293,8 @@ const initialContent = id === 'new'
     --sidebar-width: 240px;
     --header-height: 52px;
     --content-max-width: 680px;
-    --callout-bg: #fff8e6;
-    --callout-border: #ffd33d;
+    --blue: #4A90E2;
+    --blue-hover: #357ABD;
   }
 
   * {
@@ -258,39 +338,48 @@ const initialContent = id === 'new'
     margin: 0 auto;
   }
 
-  .doc-breadcrumb {
+  :global(.doc-breadcrumb) {
     display: flex;
     align-items: center;
-    gap: 0.375rem;
-    font-size: 0.875rem;
+    gap: 0;
+    font-size: 0.8125rem;
+    flex-wrap: wrap;
+    min-width: 0;
   }
 
-  .breadcrumb-link {
-    color: var(--text-secondary);
+  :global(.breadcrumb-link) {
+    color: #9b9b9b;
     text-decoration: none;
     transition: color 0.15s ease;
+    white-space: nowrap;
+    padding: 0.125rem 0;
   }
 
-  .breadcrumb-link:hover {
-    color: var(--text-primary);
+  :global(.breadcrumb-link:hover) {
+    color: #6b6b6b;
   }
 
-  .breadcrumb-sep {
-    color: var(--text-tertiary);
+  :global(.breadcrumb-sep) {
+    color: #c8c8c8;
+    flex-shrink: 0;
+    margin: 0 0.5rem;
+    font-size: 0.75rem;
   }
 
-  .breadcrumb-current {
-    color: var(--text-primary);
-    font-weight: 500;
-    max-width: 200px;
+  :global(.breadcrumb-current) {
+    color: #6b6b6b;
+    font-weight: 600;
+    max-width: 240px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    padding: 0.125rem 0;
   }
 
   .doc-actions {
     display: flex;
     gap: 0.5rem;
+    flex-shrink: 0;
   }
 
   .action-btn {
@@ -458,18 +547,6 @@ const initialContent = id === 'new'
     margin: 0;
   }
 
-  .doc-icon {
-    font-size: 4rem;
-    margin-bottom: 0.5rem;
-    cursor: pointer;
-    transition: transform 0.15s ease;
-    display: inline-block;
-  }
-
-  .doc-icon:hover {
-    transform: scale(1.1);
-  }
-
   .doc-title {
     font-size: 2.5rem;
     font-weight: 700;
@@ -518,9 +595,6 @@ const initialContent = id === 'new'
     .doc-header-content {
       padding: 0 1rem;
     }
-
-    .block-menu {
-      right: -1.5rem;
-    }
   }
 </style>
+</body>

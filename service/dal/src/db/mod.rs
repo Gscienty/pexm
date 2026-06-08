@@ -6,6 +6,7 @@ use async_trait::async_trait;
 pub trait UserRepo: Send + Sync {
     async fn create_user(&self, username: &str, email: &str, password_hash: &str) -> Result<i64, String>;
     async fn find_user_by_email(&self, email: &str) -> Result<Option<UserRow>, String>;
+    async fn find_user_by_id(&self, id: i64) -> Result<Option<UserRow>, String>;
 }
 
 pub struct UserRow {
@@ -19,8 +20,14 @@ pub trait ExamSpaceRepo: Send + Sync {
     async fn create_exam_space(&self, name: &str, description: &str) -> Result<i64, String>;
     async fn update_exam_space(&self, id: i64, name: &str, description: &str) -> Result<(), String>;
     async fn delete_exam_space(&self, id: i64) -> Result<(), String>;
-    async fn find_exam_spaces_by_user(&self, user_id: i64) -> Result<Vec<ExamSpaceRow>, String>;
+    async fn find_exam_spaces_by_user(
+        &self,
+        user_id: i64,
+        after_token: Option<&str>,
+        first: Option<i64>,
+    ) -> Result<Vec<ExamSpaceRow>, String>;
     async fn find_exam_space_by_id(&self, id: i64) -> Result<Option<ExamSpaceRow>, String>;
+    async fn find_exam_space_by_token(&self, token: &str) -> Result<Option<ExamSpaceRow>, String>;
 }
 
 pub struct ExamSpaceRow {
@@ -48,6 +55,51 @@ pub struct ExamSpaceMemberRow {
     pub exam_space_id: i64,
     pub role: String,
     pub last_accessed_at: Option<String>,
+}
+
+#[async_trait]
+pub trait DirectoryRepo: Send + Sync {
+    async fn create_directory(&self, exam_space_id: i64, parent_id: Option<i64>, name: &str) -> Result<i64, String>;
+    async fn update_directory(&self, id: i64, name: &str) -> Result<(), String>;
+    async fn delete_directory(&self, id: i64) -> Result<(), String>;
+    async fn move_directory(&self, id: i64, new_parent_id: Option<i64>) -> Result<(), String>;
+    async fn find_subdirectories(&self, exam_space_id: i64, parent_id: Option<i64>) -> Result<Vec<DirectoryRow>, String>;
+    async fn find_directory_by_id(&self, id: i64) -> Result<Option<DirectoryRow>, String>;
+    async fn get_breadcrumb(&self, directory_id: i64) -> Result<Vec<BreadcrumbItem>, String>;
+}
+
+pub struct DirectoryRow {
+    pub id: i64,
+    pub exam_space_id: i64,
+    pub parent_id: Option<i64>,
+    pub name: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+pub struct BreadcrumbItem {
+    pub id: i64,
+    pub name: String,
+}
+
+#[async_trait]
+pub trait PaperRepo: Send + Sync {
+    async fn create_paper(&self, exam_space_id: i64, directory_id: Option<i64>, title: &str) -> Result<i64, String>;
+    async fn update_paper(&self, id: i64, title: &str) -> Result<(), String>;
+    async fn delete_paper(&self, id: i64) -> Result<(), String>;
+    async fn move_paper(&self, id: i64, new_directory_id: Option<i64>) -> Result<(), String>;
+    async fn find_papers_by_directory(&self, exam_space_id: i64, directory_id: Option<i64>) -> Result<Vec<PaperRow>, String>;
+    async fn find_paper_by_id(&self, id: i64) -> Result<Option<PaperRow>, String>;
+    async fn count_papers_by_space(&self, exam_space_id: i64) -> Result<i64, String>;
+}
+
+pub struct PaperRow {
+    pub id: i64,
+    pub exam_space_id: i64,
+    pub directory_id: Option<i64>,
+    pub title: String,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 pub type DbPool = std::sync::Arc<dyn UserRepo>;

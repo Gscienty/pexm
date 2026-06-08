@@ -6,26 +6,30 @@ use tracing::info;
 use crate::dal::{
     AddExamSpaceMemberRequest, AddExamSpaceMemberResponse, CreateExamSpaceRequest,
     CreateExamSpaceResponse, DeleteExamSpaceRequest, Empty, ExamSpace,
-    ExamSpaceMember, ListExamSpaceMembersRequest, ListExamSpaceMembersResponse,
+    ExamSpaceMember, GetExamSpaceByTokenRequest, GetExamSpaceByTokenResponse,
+    ListExamSpaceMembersRequest, ListExamSpaceMembersResponse,
     ListExamSpacesRequest, ListExamSpacesResponse, RemoveExamSpaceMemberRequest,
     UpdateExamSpaceMemberRequest, UpdateExamSpaceRequest,
 };
-use crate::db::{ExamSpaceMemberRepo, ExamSpaceRepo};
+use crate::db::{ExamSpaceMemberRepo, ExamSpaceRepo, UserRepo};
 
 #[derive(Clone)]
 pub struct ExamSpaceHandler {
     exam_space_db: Arc<dyn ExamSpaceRepo>,
     member_db: Arc<dyn ExamSpaceMemberRepo>,
+    user_db: Arc<dyn UserRepo>,
 }
 
 impl ExamSpaceHandler {
     pub fn new(
         exam_space_db: Arc<dyn ExamSpaceRepo>,
         member_db: Arc<dyn ExamSpaceMemberRepo>,
+        user_db: Arc<dyn UserRepo>,
     ) -> Self {
         Self {
             exam_space_db,
             member_db,
+            user_db,
         }
     }
 
@@ -113,26 +117,37 @@ impl ExamSpaceHandler {
     ) -> Result<Response<ListExamSpacesResponse>, Status> {
         let req = request.into_inner();
 
+        let after_token = if req.after_token.is_empty() { None } else { Some(req.after_token.as_str()) };
+        let first = if req.first > 0 { Some(req.first) } else { None };
+
         let rows = self
             .exam_space_db
-            .find_exam_spaces_by_user(req.user_id)
+            .find_exam_spaces_by_user(req.user_id, after_token, first)
             .await
             .map_err(|e| Status::internal(e))?;
 
-        let spaces = rows
-            .into_iter()
+        let has_next_page = rows.len() > first.unwrap_or(20) as usize;
+        let spaces_to_return = if has_next_page { &rows[..rows.len() - 1] } else { &rows };
+        let end_cursor = spaces_to_return.last().map(|r| r.token.clone()).unwrap_or_default();
+
+        let spaces = spaces_to_return
+            .iter()
             .map(|r| ExamSpace {
                 id: r.id,
-                token: r.token,
-                name: r.name,
-                description: r.description,
-                last_updated_at: r.last_updated_at,
+                token: r.token.clone(),
+                name: r.name.clone(),
+                description: r.description.clone(),
+                last_updated_at: r.last_updated_at.clone(),
                 member_count: r.member_count,
                 paper_count: r.paper_count,
             })
             .collect();
 
-        Ok(Response::new(ListExamSpacesResponse { spaces }))
+        Ok(Response::new(ListExamSpacesResponse {
+            spaces,
+            has_next_page,
+            end_cursor,
+        }))
     }
 
     pub async fn add_exam_space_member(
@@ -199,17 +214,51 @@ impl ExamSpaceHandler {
             .await
             .map_err(|e| Status::internal(e))?;
 
-        let members = rows
-            .into_iter()
-            .map(|r| ExamSpaceMember {
+        let mut members = Vec::with_capacity(rows.len());
+        for r in rows {
+            let username = self
+                .user_db
+                .find_user_by_id(r.user_id)
+                .await
+                .map_err(|e| Status::internal(e))?
+                .map(|u| u.username)
+                .unwrap_or_default();
+            members.push(ExamSpaceMember {
                 id: r.id,
                 user_id: r.user_id,
                 exam_space_id: r.exam_space_id,
                 role: r.role,
                 last_accessed_at: r.last_accessed_at.unwrap_or_default(),
-            })
-            .collect();
+                username,
+            });
+        }
 
         Ok(Response::new(ListExamSpaceMembersResponse { members }))
+    }
+
+    pub async fn get_exam_space_by_token(
+        &self,
+        request: Request<GetExamSpaceByTokenRequest>,
+    ) -> Result<Response<GetExamSpaceByTokenResponse>, Status> {
+        let req = request.into_inner();
+
+        let space = self
+            .exam_space_db
+            .find_exam_space_by_token(&req.token)
+            .await
+            .map_err(|e| Status::internal(e))?
+            .ok_or_else(|| Status::not_found("exam space not found"))?;
+
+        Ok(Response::new(GetExamSpaceByTokenResponse {
+            space: Some(ExamSpace {
+                id: space.id,
+                token: space.token,
+                name: space.name,
+                description: space.description,
+                last_updated_at: space.last_updated_at,
+                member_count: space.member_count,
+                paper_count: space.paper_count,
+            }),
+        }))
     }
 }
