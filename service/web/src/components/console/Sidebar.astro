@@ -11,17 +11,10 @@ const userName = "用户";
 const sidebarItems = [
   { icon: "🏠", label: "控制台", href: "/console" },
   { icon: "📄", label: "试卷空间", href: "/console/papers" },
-  { icon: "❓", label: "题库", href: "/console/questions" },
-  { icon: "🎨", label: "模板", href: "/console/templates" },
-  { icon: "📊", label: "数据统计", href: "/console/analytics" },
   { icon: "⚙️", label: "设置", href: "/console/settings" },
 ];
 
-const favorites = [
-  { name: "常用数学公式库", emoji: "🔢", href: "/console/questions?tag=math" },
-  { name: "物理实验报告模板", emoji: "📋", href: "/console/templates/physics" },
-  { name: "英语听力训练集", emoji: "🎧", href: "/console/questions?tag=english" },
-];
+const favorites: { name: string; emoji: string; href: string }[] = [];
 ---
 
 <aside class="sidebar">

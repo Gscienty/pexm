@@ -7,7 +7,7 @@ use crate::rpcclient::dal::{
     ListDirectoryChildrenRequest, GetDirectoryBreadcrumbRequest,
     CreateDirectoryRequest, CreatePaperRequest, DeleteDirectoryRequest, DeletePaperRequest,
     UpdateDirectoryRequest, UpdatePaperRequest, MoveDirectoryRequest, MovePaperRequest,
-    GetPaperBreadcrumbRequest,
+    GetPaperBreadcrumbRequest, UpdateExamSpaceRequest, DeleteExamSpaceRequest,
 };
 
 use super::types::*;
@@ -496,6 +496,56 @@ impl Mutation {
                 id,
                 new_directory_id: new_directory_id.unwrap_or(0),
             })
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(true)
+    }
+
+    async fn update_exam_space(
+        &self,
+        ctx: &Context<'_>,
+        id: i64,
+        name: String,
+        description: String,
+    ) -> async_graphql::Result<bool> {
+        let _claim = ctx
+            .data::<Claim>()
+            .map_err(|_| "unauthorized")?;
+
+        let mut client = ctx
+            .data::<DalServiceClient<tonic::transport::Channel>>()
+            .map_err(|_| "dal client unavailable")?
+            .clone();
+
+        client
+            .update_exam_space(UpdateExamSpaceRequest {
+                id,
+                name,
+                description,
+            })
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(true)
+    }
+
+    async fn delete_exam_space(
+        &self,
+        ctx: &Context<'_>,
+        id: i64,
+    ) -> async_graphql::Result<bool> {
+        let _claim = ctx
+            .data::<Claim>()
+            .map_err(|_| "unauthorized")?;
+
+        let mut client = ctx
+            .data::<DalServiceClient<tonic::transport::Channel>>()
+            .map_err(|_| "dal client unavailable")?
+            .clone();
+
+        client
+            .delete_exam_space(DeleteExamSpaceRequest { id })
             .await
             .map_err(|e| e.to_string())?;
 

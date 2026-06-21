@@ -20,3 +20,8 @@ y-octo = { git = "https://github.com/y-crdt/y-octo", branch = "main", features =
 ] }
 auth-lib = { path = "../../lib/auth-lib/" }
 futures = "0.3.32"
+tonic = "0.13"
+prost = "0.13"
+
+[build-dependencies]
+tonic-build = "0.13"

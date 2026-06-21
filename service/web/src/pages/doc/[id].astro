@@ -69,6 +69,7 @@ const { id } = Astro.params;
     const siteName = "笔阵";
     let isComposing = false;
     let currentSpaceToken = spaceToken;
+    let lastSavedTitle = '';
 
     async function graphqlRequest(query, variables = {}) {
       const res = await fetch(`${BFF_BASE}/api/graphql`, {
@@ -170,7 +171,10 @@ const { id } = Astro.params;
 
             document.title = `${paper.title} - ${siteName}`;
             const docTitle = document.getElementById('docTitle');
-            if (docTitle) docTitle.textContent = paper.title;
+            if (docTitle) {
+              docTitle.textContent = paper.title;
+              lastSavedTitle = paper.title;
+            }
           }
         } catch (e) {
           console.error('load breadcrumb error:', e);
@@ -208,6 +212,21 @@ const { id } = Astro.params;
           if (editor instanceof HTMLElement) {
             editor.focus();
           }
+        }
+      });
+
+      // Save title on blur
+      docTitle.addEventListener('blur', async () => {
+        const newTitle = docTitle.textContent?.trim() || '';
+        if (!newTitle || newTitle === lastSavedTitle || paperId === 'new') return;
+        try {
+          await graphqlRequest(
+            `mutation($id: Int!, $title: String!) { updatePaper(id: $id, title: $title) }`,
+            { id: parseInt(paperId), title: newTitle },
+          );
+          lastSavedTitle = newTitle;
+        } catch (e) {
+          console.error('Failed to save title:', e);
         }
       });
     }

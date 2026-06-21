@@ -42,7 +42,7 @@ function computeQuestionLabels(doc: any): DecorationSet {
 export const Question = Node.create({
   name: 'question',
   group: 'block',
-  content: '(paragraph|heading|bulletList|uppercaseLetterList|blockquote|codeBlock|question)+',
+  content: '(paragraph|heading|bulletList|orderedList|uppercaseLetterList|blockquote|codeBlock|question)+',
   defining: true,
   isolating: true,
 

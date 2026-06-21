@@ -91,6 +91,8 @@ pub trait PaperRepo: Send + Sync {
     async fn find_papers_by_directory(&self, exam_space_id: i64, directory_id: Option<i64>) -> Result<Vec<PaperRow>, String>;
     async fn find_paper_by_id(&self, id: i64) -> Result<Option<PaperRow>, String>;
     async fn count_papers_by_space(&self, exam_space_id: i64) -> Result<i64, String>;
+    async fn store_paper_content(&self, id: i64, content: &[u8]) -> Result<(), String>;
+    async fn load_paper_content(&self, id: i64) -> Result<Option<Vec<u8>>, String>;
 }
 
 pub struct PaperRow {
@@ -98,6 +100,7 @@ pub struct PaperRow {
     pub exam_space_id: i64,
     pub directory_id: Option<i64>,
     pub title: String,
+    pub content: Option<Vec<u8>>,
     pub created_at: String,
     pub updated_at: String,
 }

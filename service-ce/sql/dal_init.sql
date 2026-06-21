@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS exam_spaces (
     token           TEXT NOT NULL UNIQUE,
     name            TEXT NOT NULL,
     description     TEXT NOT NULL DEFAULT '',
+    paper_count     INTEGER NOT NULL DEFAULT 0,
     last_updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -41,6 +42,7 @@ CREATE TABLE IF NOT EXISTS papers (
     exam_space_id   INTEGER NOT NULL,
     directory_id    INTEGER,
     title           TEXT NOT NULL,
+    content         BLOB,
     created_at      DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at      DATETIME NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (exam_space_id) REFERENCES exam_spaces(id) ON DELETE CASCADE,

@@ -10,6 +10,8 @@ use crate::dal::{
     GetPaperBreadcrumbRequest, GetPaperBreadcrumbResponse,
     ListDirectoryChildrenRequest, ListDirectoryChildrenResponse,
     MoveDirectoryRequest, MovePaperRequest, Paper,
+    StorePaperContentRequest, StorePaperContentResponse,
+    LoadPaperContentRequest, LoadPaperContentResponse,
     UpdateDirectoryRequest, UpdatePaperRequest,
 };
 use crate::db::{DirectoryRepo, PaperRepo};
@@ -281,5 +283,36 @@ impl DirectoryHandler {
                 updated_at: paper.updated_at,
             }),
         }))
+    }
+
+    pub async fn store_paper_content(
+        &self,
+        request: Request<StorePaperContentRequest>,
+    ) -> Result<Response<StorePaperContentResponse>, Status> {
+        let req = request.into_inner();
+
+        self.paper_db
+            .store_paper_content(req.id, &req.content)
+            .await
+            .map_err(|e| Status::internal(e))?;
+
+        info!("Paper content stored: id={}, size={}", req.id, req.content.len());
+        Ok(Response::new(StorePaperContentResponse {}))
+    }
+
+    pub async fn load_paper_content(
+        &self,
+        request: Request<LoadPaperContentRequest>,
+    ) -> Result<Response<LoadPaperContentResponse>, Status> {
+        let req = request.into_inner();
+
+        let content = self
+            .paper_db
+            .load_paper_content(req.id)
+            .await
+            .map_err(|e| Status::internal(e))?
+            .unwrap_or_default();
+
+        Ok(Response::new(LoadPaperContentResponse { content }))
     }
 }

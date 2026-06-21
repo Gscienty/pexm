@@ -16,6 +16,7 @@ export class DocWebSocketProvider {
   private synced: boolean = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private updateHandler: (update: Uint8Array, origin: any) => void;
+  private handlerRegistered: boolean = false;
 
   constructor(
     doc: Y.Doc,
@@ -45,7 +46,7 @@ export class DocWebSocketProvider {
     if (this.ws) {
       this.ws.close();
     }
-    this.doc.off('update', this.updateHandler);
+    this.unregisterUpdateHandler();
     this.synced = false;
 
     this.ws = new WebSocket(this.url);
@@ -83,6 +84,19 @@ export class DocWebSocketProvider {
     };
   }
 
+  private registerUpdateHandler() {
+    if (this.handlerRegistered) return;
+    this.doc.on('update', this.updateHandler);
+    this.handlerRegistered = true;
+    console.log('[WS] synced, updateHandler registered');
+  }
+
+  private unregisterUpdateHandler() {
+    if (!this.handlerRegistered) return;
+    this.doc.off('update', this.updateHandler);
+    this.handlerRegistered = false;
+  }
+
   private handleSync(msg: NonNullable<ReturnType<typeof decodeMessage>>) {
     if (msg.docMessageType === undefined) return;
 
@@ -103,8 +117,7 @@ export class DocWebSocketProvider {
         }
         if (!this.synced) {
           this.synced = true;
-          this.doc.on('update', this.updateHandler);
-          console.log('[WS] synced, updateHandler registered');
+          this.registerUpdateHandler();
         }
         break;
       }
@@ -146,7 +159,7 @@ export class DocWebSocketProvider {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    this.doc.off('update', this.updateHandler);
+    this.unregisterUpdateHandler();
     this.ws?.close();
     this.ws = null;
     this.synced = false;

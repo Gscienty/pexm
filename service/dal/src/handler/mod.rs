@@ -16,8 +16,10 @@ use crate::dal::{
     ListDirectoryChildrenRequest, ListDirectoryChildrenResponse,
     ListExamSpaceMembersRequest, ListExamSpaceMembersResponse,
     ListExamSpacesRequest, ListExamSpacesResponse,
+    LoadPaperContentRequest, LoadPaperContentResponse,
     LoginByEmailRequest, LoginByEmailResponse, MoveDirectoryRequest, MovePaperRequest,
     RegisterRequest, RegisterResponse, RemoveExamSpaceMemberRequest,
+    StorePaperContentRequest, StorePaperContentResponse,
     UpdateDirectoryRequest, UpdateExamSpaceMemberRequest, UpdateExamSpaceRequest,
     UpdatePaperRequest,
 };
@@ -196,5 +198,19 @@ impl DalService for DalServiceHandler {
         request: Request<GetPaperBreadcrumbRequest>,
     ) -> Result<Response<GetPaperBreadcrumbResponse>, Status> {
         self.directory.get_paper_breadcrumb(request).await
+    }
+
+    async fn store_paper_content(
+        &self,
+        request: Request<StorePaperContentRequest>,
+    ) -> Result<Response<StorePaperContentResponse>, Status> {
+        self.directory.store_paper_content(request).await
+    }
+
+    async fn load_paper_content(
+        &self,
+        request: Request<LoadPaperContentRequest>,
+    ) -> Result<Response<LoadPaperContentResponse>, Status> {
+        self.directory.load_paper_content(request).await
     }
 }

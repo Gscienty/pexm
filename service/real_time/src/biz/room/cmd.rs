@@ -22,6 +22,11 @@ impl DocRoomCommand {
         Self { cmd }
     }
 
+    /// Returns true if the DocRoom task has exited (receiver dropped).
+    pub(crate) fn is_closed(&self) -> bool {
+        self.cmd.is_closed()
+    }
+
     pub(crate) fn join(
         &self,
         principal: Arc<Principal>,

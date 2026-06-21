@@ -11,8 +11,12 @@ use crate::biz::{doc::document::Document, principal::Principal};
 use super::{cmd::DocCommandMessage, cmd::DocRoomCommand};
 
 pub enum DocRoomCallbackMessage {
+    /// Periodic store: persist content to dal.
     Store(u64, Vec<u8>),
-    Destory(u64),
+    /// Room exited (all connections gone): immediately remove from active rooms
+    /// and persist content. The receiver must call `pre_destory_room` then
+    /// store to dal, then `clear_pending`.
+    PreDestory(u64, Vec<u8>),
 }
 
 pub struct DocRoom {
@@ -80,10 +84,25 @@ impl DocRoom {
             }
         }
 
-        self.callback_store();
-        if let Err(_err) = self.callback.send(DocRoomCallbackMessage::Destory(self.id)) {
-            // TODO log error
+        // Room exited: send PreDestory with current content so the receiver
+        // can immediately remove us from the active map and persist content.
+        if let Ok(content) = self.doc.encode_state() {
+            if let Err(err) = self
+                .callback
+                .send(DocRoomCallbackMessage::PreDestory(self.id, content))
+            {
+                tracing::error!("callback pre-destory failed: {}", err);
+            }
+        } else {
+            // Encode failed — still need to remove the room from the active map.
+            if let Err(err) = self
+                .callback
+                .send(DocRoomCallbackMessage::PreDestory(self.id, vec![]))
+            {
+                tracing::error!("callback pre-destory failed: {}", err);
+            }
         }
+
         self.doc.destory();
     }
 
@@ -97,7 +116,7 @@ impl DocRoom {
                 .callback
                 .send(DocRoomCallbackMessage::Store(self.id, content))
             {
-                println!("callback store encode state failed, ${err}");
+                tracing::error!("callback store failed: {}", err);
                 return;
             }
 

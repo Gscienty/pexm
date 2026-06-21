@@ -37,4 +37,6 @@ service DalService {
   rpc DeletePaper(DeletePaperRequest) returns (Empty);
   rpc MovePaper(MovePaperRequest) returns (Empty);
   rpc GetPaperBreadcrumb(GetPaperBreadcrumbRequest) returns (GetPaperBreadcrumbResponse);
+  rpc StorePaperContent(StorePaperContentRequest) returns (StorePaperContentResponse);
+  rpc LoadPaperContent(LoadPaperContentRequest) returns (LoadPaperContentResponse);
 }

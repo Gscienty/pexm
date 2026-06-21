@@ -106,3 +106,20 @@ message MovePaperRequest {
   int64 id = 1;
   int64 new_directory_id = 2; // 0 means root
 }
+
+// --- Paper Content (BLOB) ---
+
+message StorePaperContentRequest {
+  int64 id = 1;
+  bytes content = 2;
+}
+
+message StorePaperContentResponse {}
+
+message LoadPaperContentRequest {
+  int64 id = 1;
+}
+
+message LoadPaperContentResponse {
+  bytes content = 1; // empty if no content stored
+}

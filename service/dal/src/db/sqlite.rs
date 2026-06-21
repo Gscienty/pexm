@@ -166,7 +166,8 @@ impl ExamSpaceRepo for SqliteDb {
         let fetch_one_more = limit + 1;
 
         let base_sql = "SELECT es.id, es.token, es.name, es.description, es.last_updated_at,
-                        (SELECT COUNT(*) FROM exam_space_members WHERE exam_space_id = es.id) as member_count
+                        (SELECT COUNT(*) FROM exam_space_members WHERE exam_space_id = es.id) as member_count,
+                        es.paper_count
                  FROM exam_spaces es
                  INNER JOIN exam_space_members esm ON es.id = esm.exam_space_id
                  WHERE esm.user_id = ?1";
@@ -192,7 +193,7 @@ impl ExamSpaceRepo for SqliteDb {
                     description: row.get(3)?,
                     last_updated_at: row.get(4)?,
                     member_count: row.get(5)?,
-                    paper_count: 0,
+                    paper_count: row.get(6)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -205,7 +206,7 @@ impl ExamSpaceRepo for SqliteDb {
     async fn find_exam_space_by_id(&self, id: i64) -> Result<Option<ExamSpaceRow>, String> {
         let conn = self.conn.lock().await;
         let mut stmt = conn
-            .prepare("SELECT id, token, name, description, last_updated_at, (SELECT COUNT(*) FROM exam_space_members WHERE exam_space_id = exam_spaces.id) as member_count FROM exam_spaces WHERE id = ?1")
+            .prepare("SELECT id, token, name, description, last_updated_at, (SELECT COUNT(*) FROM exam_space_members WHERE exam_space_id = exam_spaces.id) as member_count, paper_count FROM exam_spaces WHERE id = ?1")
             .map_err(|e| e.to_string())?;
 
         let result = stmt.query_row(params![id], |row| {
@@ -216,7 +217,7 @@ impl ExamSpaceRepo for SqliteDb {
                 description: row.get(3)?,
                 last_updated_at: row.get(4)?,
                 member_count: row.get(5)?,
-                paper_count: 0,
+                paper_count: row.get(6)?,
             })
         });
 
@@ -230,7 +231,7 @@ impl ExamSpaceRepo for SqliteDb {
     async fn find_exam_space_by_token(&self, token: &str) -> Result<Option<ExamSpaceRow>, String> {
         let conn = self.conn.lock().await;
         let mut stmt = conn
-            .prepare("SELECT id, token, name, description, last_updated_at, (SELECT COUNT(*) FROM exam_space_members WHERE exam_space_id = exam_spaces.id) as member_count FROM exam_spaces WHERE token = ?1")
+            .prepare("SELECT id, token, name, description, last_updated_at, (SELECT COUNT(*) FROM exam_space_members WHERE exam_space_id = exam_spaces.id) as member_count, paper_count FROM exam_spaces WHERE token = ?1")
             .map_err(|e| e.to_string())?;
 
         let result = stmt.query_row(params![token], |row| {
@@ -241,7 +242,7 @@ impl ExamSpaceRepo for SqliteDb {
                 description: row.get(3)?,
                 last_updated_at: row.get(4)?,
                 member_count: row.get(5)?,
-                paper_count: 0,
+                paper_count: row.get(6)?,
             })
         });
 
@@ -514,9 +515,9 @@ impl PaperRepo for SqliteDb {
             params![exam_space_id, directory_id, title],
         )
         .map_err(|e| e.to_string())?;
-        // Update space last_updated_at
+        // Update space last_updated_at and increment paper_count
         conn.execute(
-            "UPDATE exam_spaces SET last_updated_at = datetime('now') WHERE id = ?1",
+            "UPDATE exam_spaces SET last_updated_at = datetime('now'), paper_count = paper_count + 1 WHERE id = ?1",
             params![exam_space_id],
         )
         .map_err(|e| e.to_string())?;
@@ -539,8 +540,17 @@ impl PaperRepo for SqliteDb {
 
     async fn delete_paper(&self, id: i64) -> Result<(), String> {
         let conn = self.conn.lock().await;
+        // Get exam_space_id before deleting
+        let exam_space_id: i64 = conn
+            .query_row("SELECT exam_space_id FROM papers WHERE id = ?1", params![id], |row| row.get(0))
+            .map_err(|e| e.to_string())?;
         conn.execute("DELETE FROM papers WHERE id = ?1", params![id])
             .map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE exam_spaces SET paper_count = paper_count - 1 WHERE id = ?1 AND paper_count > 0",
+            params![exam_space_id],
+        )
+        .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -573,6 +583,7 @@ impl PaperRepo for SqliteDb {
                         exam_space_id: row.get(1)?,
                         directory_id: row.get(2)?,
                         title: row.get(3)?,
+                        content: None,
                         created_at: row.get(4)?,
                         updated_at: row.get(5)?,
                     })
@@ -587,6 +598,7 @@ impl PaperRepo for SqliteDb {
                         exam_space_id: row.get(1)?,
                         directory_id: row.get(2)?,
                         title: row.get(3)?,
+                        content: None,
                         created_at: row.get(4)?,
                         updated_at: row.get(5)?,
                     })
@@ -609,6 +621,7 @@ impl PaperRepo for SqliteDb {
                 exam_space_id: row.get(1)?,
                 directory_id: row.get(2)?,
                 title: row.get(3)?,
+                content: None,
                 created_at: row.get(4)?,
                 updated_at: row.get(5)?,
             })
@@ -630,5 +643,34 @@ impl PaperRepo for SqliteDb {
             )
             .map_err(|e| e.to_string())?;
         Ok(count)
+    }
+
+    async fn store_paper_content(&self, id: i64, content: &[u8]) -> Result<(), String> {
+        let conn = self.conn.lock().await;
+        let affected = conn
+            .execute(
+                "UPDATE papers SET content = ?1, updated_at = datetime('now') WHERE id = ?2",
+                params![content, id],
+            )
+            .map_err(|e| e.to_string())?;
+        if affected == 0 {
+            return Err("paper not found".to_string());
+        }
+        Ok(())
+    }
+
+    async fn load_paper_content(&self, id: i64) -> Result<Option<Vec<u8>>, String> {
+        let conn = self.conn.lock().await;
+        let result = conn
+            .query_row(
+                "SELECT content FROM papers WHERE id = ?1",
+                params![id],
+                |row| row.get::<_, Option<Vec<u8>>>(0),
+            );
+        match result {
+            Ok(content) => Ok(content),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.to_string()),
+        }
     }
 }
