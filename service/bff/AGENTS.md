@@ -19,11 +19,11 @@ src/
 ├── config.rs            # 配置加载（TOML 文件 + 环境变量）
 ├── graphql/
 │   ├── mod.rs           # AppSchema 类型别名
-│   ├── query.rs         # Query 对象 + GraphQL resolver
-│   └── types.rs         # GraphQL 实体类型（SimpleObject）
+│   ├── query.rs         # Query + Mutation 对象 + GraphQL resolver
+│   └── types.rs         # GraphQL 实体类型（SimpleObject / Union）
 ├── handler/
 │   ├── mod.rs           # 路由定义
-│   ├── auth.rs          # 认证 handler（注册、登录、获取当前用户）
+│   ├── auth.rs          # 认证 handler（注册、登录、获取当前用户、登出）
 │   ├── exam_space.rs    # 试卷空间 REST handler（创建）
 │   └── graphql.rs       # GraphQL 请求 handler（构建 Schema，注入 context）
 └── rpcclient/
@@ -51,7 +51,7 @@ addr = "http://127.0.0.1:4000"
 - `AppJotProvider` 是 Jot 的 local newtype，用来从 AppState 中提取 `Arc<Jot>`
 - Cookie 属性：HttpOnly、SameSite=Lax、Path=/、Max-Age=24h
 
-## 接口总览
+## REST 接口
 
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
@@ -59,24 +59,9 @@ addr = "http://127.0.0.1:4000"
 | POST | `/api/auth/register` | 用户注册 | 否 |
 | POST | `/api/auth/login` | 邮箱密码登录 | 否 |
 | GET | `/api/auth/me` | 获取当前用户 | 是 |
+| POST | `/api/auth/logout` | 登出（清除 Cookie） | 是 |
 | POST | `/api/exam-spaces` | 创建试卷空间 | 是 |
 | POST | `/api/graphql` | GraphQL 查询端点 | 是 |
-
----
-
-## Web API 请求/响应格式
-
-### 健康检查
-
-```
-GET /api/health
-```
-
-**响应** `200 OK`
-
-```
-ok
-```
 
 ### 注册
 
@@ -93,24 +78,10 @@ Content-Type: application/json
 | email | string | 是 | 邮箱地址（作为账户名） |
 | password | string | 是 | 密码（至少6位） |
 
-```json
-{
-  "username": "张三",
-  "email": "zhangsan@example.com",
-  "password": "123456"
-}
-```
-
 **成功响应** `201 Created`
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| user_id | i64 | 用户 ID |
-
 ```json
-{
-  "user_id": 1
-}
+{ "user_id": 1 }
 ```
 
 ### 登录
@@ -127,27 +98,10 @@ Content-Type: application/json
 | email | string | 是 | 邮箱地址 |
 | password | string | 是 | 密码 |
 
-```json
-{
-  "email": "zhangsan@example.com",
-  "password": "123456"
-}
-```
-
-**成功响应** `200 OK`
-
-响应头 `Set-Cookie` 中包含 HttpOnly 的 `token` Cookie。
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| user_id | i64 | 用户 ID |
-| username | string | 用户名 |
+**成功响应** `200 OK`，响应头 `Set-Cookie` 中包含 HttpOnly 的 `token` Cookie。
 
 ```json
-{
-  "user_id": 1,
-  "username": "张三"
-}
+{ "user_id": 1, "username": "张三" }
 ```
 
 ### 获取当前用户
@@ -159,16 +113,8 @@ Cookie: token=<jwt_token>
 
 **成功响应** `200 OK`
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| user_id | u64 | 用户 ID |
-| username | string | 用户名 |
-
 ```json
-{
-  "user_id": 1,
-  "username": "张三"
-}
+{ "user_id": 1, "username": "张三" }
 ```
 
 ### 创建试卷空间
@@ -186,88 +132,140 @@ Cookie: token=<jwt_token>
 | name | string | 是 | 空间名称 |
 | description | string | 否 | 空间描述 |
 
-```json
-{
-  "name": "数学期中试卷",
-  "description": "三年级数学期中考试试卷"
-}
-```
-
 **成功响应** `201 Created`
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | i64 | 新创建的空间 ID |
-
 ```json
-{
-  "id": 1
-}
+{ "id": 1 }
 ```
-
-**说明**: 创建试卷空间后，DAL 会自动将创建者作为 `owner` 角色加入 `exam_space_members` 表。
-
----
 
 ## GraphQL API
 
 端点：`POST /api/graphql`（需要登录）
 
-### 查询当前用户的试卷空间
+### Query
+
+#### exam_spaces — 查询试卷空间
+
+- `token` 参数提供时：返回单个空间（GqlExamSpacesResult::Payload）
+- `token` 参数省略时：返回分页列表（GqlExamSpacesResult::Connection）
 
 ```graphql
 query {
-  myExamSpaces {
-    id
-    name
-    description
-    lastUpdatedAt
+  examSpaces(first: 20) {
+    ... on GqlExamSpaceConnection {
+      edges { node { id name description paperCount } cursor }
+      pageInfo { hasNextPage endCursor }
+    }
+    ... on GqlExamSpacePayload {
+      space { id name description paperCount }
+    }
   }
 }
 ```
 
-### 查询试卷空间成员
+#### exam_space_members — 查询空间成员
 
 ```graphql
 query {
-  examSpaceMembers(examSpaceId: 1) {
-    id
-    userId
-    examSpaceId
-    role
-    lastAccessedAt
+  examSpaceMembers(examSpaceId: "1") {
+    id userId examSpaceId role username
   }
 }
 ```
 
-### GraphQL Schema 类型
+#### directory_children — 列出目录子项
 
-**ExamSpace**
+```graphql
+query {
+  directoryChildren(examSpaceId: 1, parentId: 0) {
+    directories { id name parentId }
+    papers { id title directoryId }
+  }
+}
+```
+
+#### directory_breadcrumb — 获取目录面包屑
+
+```graphql
+query {
+  directoryBreadcrumb(directoryId: 1) {
+    id name
+  }
+}
+```
+
+#### paper_breadcrumb — 获取试卷面包屑
+
+```graphql
+query {
+  paperBreadcrumb(paperId: 1) {
+    directoryItems { id name }
+    paper { id title }
+  }
+}
+```
+
+### Mutation
+
+| Mutation | 参数 | 返回 | 说明 |
+|----------|------|------|------|
+| `createDirectory` | `examSpaceId, parentId?, name` | `GqlDirectory` | 创建目录 |
+| `updateDirectory` | `id, name` | `Boolean` | 更新目录名称 |
+| `deleteDirectory` | `id` | `Boolean` | 删除目录 |
+| `moveDirectory` | `id, newParentId?` | `Boolean` | 移动目录 |
+| `createPaper` | `examSpaceId, directoryId?, title` | `GqlPaper` | 创建试卷 |
+| `updatePaper` | `id, title` | `Boolean` | 更新试卷标题 |
+| `deletePaper` | `id` | `Boolean` | 删除试卷 |
+| `movePaper` | `id, newDirectoryId?` | `Boolean` | 移动试卷 |
+| `updateExamSpace` | `id, name, description` | `Boolean` | 更新试卷空间 |
+| `deleteExamSpace` | `id` | `Boolean` | 删除试卷空间 |
+
+### GraphQL 类型
+
+**GqlExamSpace**
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | Int | 空间 ID |
+| token | String | 空间唯一 token |
 | name | String | 空间名称 |
 | description | String | 描述 |
 | lastUpdatedAt | String | 最后更新时间 |
+| memberCount | Int | 成员数量 |
+| paperCount | Int | 试卷数量 |
 
-**ExamSpaceMember**
+**GqlDirectory**
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| id | Int | 成员记录 ID |
-| userId | Int | 用户 ID |
-| examSpaceId | Int | 试卷空间 ID |
-| role | String | 角色（如 member、owner） |
-| lastAccessedAt | String | 最后访问时间 |
+| id | Int | 目录 ID |
+| examSpaceId | Int | 所属空间 |
+| parentId | Int | 父目录 ID（0 为根） |
+| name | String | 目录名称 |
+| createdAt | String | 创建时间 |
+| updatedAt | String | 更新时间 |
 
----
+**GqlPaper**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Int | 试卷 ID |
+| examSpaceId | Int | 所属空间 |
+| directoryId | Int | 所属目录（0 为根） |
+| title | String | 试卷标题 |
+| createdAt | String | 创建时间 |
+| updatedAt | String | 更新时间 |
 
 ## 扩展指南
 
 ### 添加新的 GraphQL 实体
 
 1. 在 `src/graphql/types.rs` 中定义 SimpleObject
-2. 在 `src/graphql/query.rs` 中添加对应的 resolver 方法
+2. 在 `src/graphql/query.rs` 中添加对应的 Query resolver 或 Mutation 方法
 3. 通过 `ctx.data::<DalServiceClient>()` 获取 gRPC 客户端调用 dal 服务
 4. 通过 `ctx.data::<Claim>()` 获取当前用户信息
+
+### 添加新的 REST 接口
+
+1. 在 `src/handler/` 下新建或扩展 handler 模块
+2. 在 `src/handler/mod.rs` 的 `routes()` 中注册路由

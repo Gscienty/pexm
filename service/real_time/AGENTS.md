@@ -143,8 +143,17 @@ Browser ── wss://域名/api/websocket/doc/{name} ──▶ Nginx :8080 ─�
 
 Nginx 配置中 `/api/websocket/` 路径需要开启 WebSocket proxy（`proxy_set_header Upgrade/Connection`）。
 
+## 构建 & 运行
+
+```bash
+cd service/real_time && cargo build
+cargo run
+# 监听 0.0.0.0:3001
+```
+
 ## 待实现
 
-- [ ] 文档持久化回调的实际存储逻辑
+- [ ] 文档持久化回调的实际存储逻辑（回调 dal StorePaperContent）
 - [ ] 错误日志完善（目前多处 TODO）
 - [ ] 文档关闭时的自动保存
+- [ ] 房间销毁时清理 RoomSet 中的记录

@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package clsi;
+
+service ClsiService {
+  // 将 doc json 结构编译为 pdf 文件
+  rpc CompilePdf(CompilePdfRequest) returns (CompilePdfResponse);
+}
+
+message CompilePdfRequest {
+  // doc json 内容
+  string doc_json = 1;
+}
+
+message CompilePdfResponse {
+  // 编译后的 pdf 文件内容（二进制）
+  bytes pdf_data = 1;
+  // 是否成功
+  bool success = 2;
+  // 错误信息（如果失败）
+  string error = 3;
+}

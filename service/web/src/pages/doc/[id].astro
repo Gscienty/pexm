@@ -3,6 +3,7 @@ export const prerender = false;
 
 import Sidebar from '../../components/console/Sidebar.astro';
 import TiptapEditor from '../../components/TiptapEditor.astro';
+import './styles.css';
 
 const siteName = "笔阵";
 const { id } = Astro.params;
@@ -31,21 +32,21 @@ const { id } = Astro.params;
           </nav>
           <div class="doc-actions">
             <button class="action-btn primary" id="btnSave">
-              <span class="action-icon">💾</span>
-              保存
+              <span class="action-icon">👁</span>
+              预览
             </button>
           </div>
         </div>
       </header>
 
       <main class="doc-main">
-        <div class="doc-content-wrapper">
+        <div class="doc-content-wrapper" id="docContentWrapper">
           <aside class="doc-outline" id="docOutline">
             <div class="outline-header">大纲</div>
             <ul class="outline-list" id="outlineList"></ul>
           </aside>
 
-          <div class="doc-container">
+          <div class="doc-container" id="docContainer">
             <div class="doc-title" contenteditable="true" data-placeholder="试卷标题" id="docTitle"></div>
 
             <TiptapEditor content="" docName={id || 'new'} placeholder="输入 / 以使用命令..." class="doc-editor" />
@@ -58,562 +59,43 @@ const { id } = Astro.params;
             </div>
           </aside>
         </div>
+
+        <div class="doc-preview-panel" id="docPreviewPanel">
+          <button class="preview-fullscreen-btn" id="btnFullscreen" title="全屏预览">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/>
+            </svg>
+          </button>
+          <div class="preview-content" id="previewContent">
+            <div class="preview-placeholder">
+              <div class="preview-placeholder-icon">📄</div>
+              <p>PDF 预览区域</p>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
 
   <script>
-    const BFF_BASE = '';
+    import { checkAuth } from './api';
+    import { initBreadcrumb } from './breadcrumb';
+    import { initTitleEditor } from './titleEditor';
+    import { initOutline } from './outline';
+    import { initPreview } from './preview';
+
     const paperId = window.location.pathname.split('/').pop() || '';
     const urlParams = new URLSearchParams(window.location.search);
     const spaceToken = urlParams.get('space') || '';
-    const siteName = "笔阵";
-    let isComposing = false;
-    let currentSpaceToken = spaceToken;
-    let lastSavedTitle = '';
 
-    async function graphqlRequest(query, variables = {}) {
-      const res = await fetch(`${BFF_BASE}/api/graphql`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ query, variables }),
-      });
-      if (!res.ok) throw new Error('网络错误');
-      const json = await res.json();
-      if (json.errors) throw new Error(json.errors[0]?.message || 'GraphQL 错误');
-      return json.data;
-    }
-
-    async function checkAuth() {
-      try {
-        const res = await fetch(`${BFF_BASE}/api/auth/me`, { credentials: 'include' });
-        if (!res.ok) { window.location.href = '/login'; return null; }
-        return res.json();
-      } catch {
-        window.location.href = '/login';
-        return null;
-      }
-    }
-
-    async function loadPaperBreadcrumb(paperId) {
-      const data = await graphqlRequest(`query($paperId: Int!) { paperBreadcrumb(paperId: $paperId) { directoryItems { id name } paper { id examSpaceId directoryId title } } }`, { paperId: parseInt(paperId) });
-      return data?.paperBreadcrumb || null;
-    }
-
-    async function loadSpaceByToken(token) {
-      const data = await graphqlRequest(`query($token: String) { examSpaces(token: $token) { ... on GqlExamSpacePayload { space { id token name } } } }`, { token });
-      return data?.examSpaces?.space || null;
-    }
-
-    function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
-    }
-
-    async function initBreadcrumb() {
-      const breadcrumb = document.getElementById('docBreadcrumb')!;
-      const titleEl = document.getElementById('breadcrumbTitle')!;
-
-      // If new paper with space context
-      if (paperId === 'new' && currentSpaceToken) {
-        try {
-          const space = await loadSpaceByToken(currentSpaceToken);
-          if (space) {
-            breadcrumb.innerHTML = `
-              <a href="/console" class="breadcrumb-link">控制台</a>
-              <span class="breadcrumb-sep">/</span>
-              <a href="/console/papers" class="breadcrumb-link">试卷空间</a>
-              <span class="breadcrumb-sep">/</span>
-              <a href="/space/${encodeURIComponent(space.token)}" class="breadcrumb-link">${escapeHtml(space.name)}</a>
-              <span class="breadcrumb-sep">/</span>
-              <span class="breadcrumb-current">新建试卷</span>`;
-            titleEl.textContent = '新建试卷';
-            document.title = `新建试卷 - ${siteName}`;
-            const docTitle = document.getElementById('docTitle');
-            if (docTitle) docTitle.textContent = '新建试卷';
-          }
-        } catch (e) {
-          console.error('load space error:', e);
-        }
-        return;
-      }
-
-      // Existing paper - load breadcrumb
-      if (paperId && paperId !== 'new') {
-        try {
-          const result = await loadPaperBreadcrumb(paperId);
-          if (result && result.paper) {
-            const paper = result.paper;
-            const dirItems = result.directoryItems || [];
-
-            // Load space info
-            let spaceLink = '';
-            if (currentSpaceToken) {
-              const space = await loadSpaceByToken(currentSpaceToken);
-              if (space) {
-                spaceLink = `<a href="/space/${encodeURIComponent(space.token)}" class="breadcrumb-link">${escapeHtml(space.name)}</a><span class="breadcrumb-sep">/</span>`;
-                currentSpaceToken = space.token;
-              }
-            }
-
-            // Build directory breadcrumb - each item links to its directory level
-            let dirHtml = dirItems.map(item =>
-              `<a href="/space/${encodeURIComponent(currentSpaceToken)}?dir=${item.id}" class="breadcrumb-link">${escapeHtml(item.name)}</a><span class="breadcrumb-sep">/</span>`
-            ).join('');
-
-            breadcrumb.innerHTML = `
-              <a href="/console" class="breadcrumb-link">控制台</a>
-              <span class="breadcrumb-sep">/</span>
-              <a href="/console/papers" class="breadcrumb-link">试卷空间</a>
-              <span class="breadcrumb-sep">/</span>
-              ${spaceLink}${dirHtml}<span class="breadcrumb-current">${escapeHtml(paper.title)}</span>`;
-
-            document.title = `${paper.title} - ${siteName}`;
-            const docTitle = document.getElementById('docTitle');
-            if (docTitle) {
-              docTitle.textContent = paper.title;
-              lastSavedTitle = paper.title;
-            }
-          }
-        } catch (e) {
-          console.error('load breadcrumb error:', e);
-          titleEl.textContent = paperId;
-        }
-      }
-    }
-
-    // Title editing
-    const docTitle = document.querySelector('.doc-title');
-    if (docTitle) {
-      const updateTitles = () => {
-        const text = docTitle.textContent?.trim() || '';
-        if (!text) {
-          docTitle.innerHTML = '';
-        }
-        const title = text || '未命名试卷';
-        document.title = `${title} - ${siteName}`;
-        const breadcrumbCurrent = document.querySelector('.breadcrumb-current');
-        if (breadcrumbCurrent) {
-          breadcrumbCurrent.textContent = title;
-        }
-      };
-
-      docTitle.addEventListener('input', updateTitles);
-      updateTitles();
-
-      docTitle.addEventListener('compositionstart', () => { isComposing = true; });
-      docTitle.addEventListener('compositionend', () => { isComposing = false; });
-
-      docTitle.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !isComposing) {
-          e.preventDefault();
-          const editor = document.querySelector('.ProseMirror');
-          if (editor instanceof HTMLElement) {
-            editor.focus();
-          }
-        }
-      });
-
-      // Save title on blur
-      docTitle.addEventListener('blur', async () => {
-        const newTitle = docTitle.textContent?.trim() || '';
-        if (!newTitle || newTitle === lastSavedTitle || paperId === 'new') return;
-        try {
-          await graphqlRequest(
-            `mutation($id: Int!, $title: String!) { updatePaper(id: $id, title: $title) }`,
-            { id: parseInt(paperId), title: newTitle },
-          );
-          lastSavedTitle = newTitle;
-        } catch (e) {
-          console.error('Failed to save title:', e);
-        }
-      });
-    }
-
-    // Outline
-    const outlineList = document.getElementById('outlineList');
-    const docMain = document.querySelector('.doc-main');
-
-    function renderOutline(headings) {
-      if (!outlineList) return;
-      if (headings.length === 0) {
-        outlineList.innerHTML = '<li class="outline-empty">暂无标题</li>';
-        return;
-      }
-      outlineList.innerHTML = headings.map(h => {
-        const indent = h.level - 1;
-        return `<li class="outline-item" data-id="${h.id}" style="padding-left: ${indent * 12 + 8}px">
-          <a href="#${h.id}" class="outline-link">${h.text || '未命名'}</a>
-        </li>`;
-      }).join('');
-
-      outlineList.querySelectorAll('.outline-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-          e.preventDefault();
-          const id = (link.closest('.outline-item') as HTMLElement)?.dataset.id;
-          if (!id) return;
-          const target = document.getElementById(id);
-          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-      });
-    }
-
-    document.addEventListener('headings-change', ((e) => {
-      renderOutline(e.detail.headings);
-    }));
-
-    let currentActiveId = '';
-    function updateActiveHeading() {
-      if (!outlineList) return;
-      const items = outlineList.querySelectorAll('.outline-item');
-      if (items.length === 0) return;
-      let activeId = '';
-      items.forEach(item => {
-        const id = (item as HTMLElement).dataset.id;
-        if (!id) return;
-        const el = document.getElementById(id);
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          if (rect.top <= 120) activeId = id;
-        }
-      });
-      if (activeId !== currentActiveId) {
-        currentActiveId = activeId;
-        items.forEach(item => {
-          item.classList.toggle('active', (item as HTMLElement).dataset.id === activeId);
-        });
-      }
-    }
-
-    if (docMain) {
-      docMain.addEventListener('scroll', updateActiveHeading, { passive: true });
-    }
-
-    // Init
     async function init() {
       await checkAuth();
-      await initBreadcrumb();
+      const title = await initBreadcrumb(paperId, spaceToken);
+      initTitleEditor(paperId, title || '');
+      initOutline();
+      initPreview();
     }
 
     init();
   </script>
   </body>
 </html>
-
-<style>
-  :root {
-    --doc-bg: #ffffff;
-    --text-primary: #37352f;
-    --text-secondary: #6b6b6b;
-    --text-tertiary: #9b9b9b;
-    --border-color: #e3e2e0;
-    --hover-bg: #f7f6f3;
-    --sidebar-width: 240px;
-    --header-height: 52px;
-    --content-max-width: 680px;
-    --blue: #4A90E2;
-    --blue-hover: #357ABD;
-  }
-
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-    background-color: var(--doc-bg);
-    color: var(--text-primary);
-    line-height: 1.6;
-  }
-
-  .doc-layout {
-    margin-left: var(--sidebar-width);
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .doc-header {
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border-color);
-    height: var(--header-height);
-  }
-
-  .doc-header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 100%;
-    padding: 0 4rem;
-    max-width: calc(var(--content-max-width) + 240px + 4rem);
-    margin: 0 auto;
-  }
-
-  :global(.doc-breadcrumb) {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    font-size: 0.8125rem;
-    flex-wrap: wrap;
-    min-width: 0;
-  }
-
-  :global(.breadcrumb-link) {
-    color: #9b9b9b;
-    text-decoration: none;
-    transition: color 0.15s ease;
-    white-space: nowrap;
-    padding: 0.125rem 0;
-  }
-
-  :global(.breadcrumb-link:hover) {
-    color: #6b6b6b;
-  }
-
-  :global(.breadcrumb-sep) {
-    color: #c8c8c8;
-    flex-shrink: 0;
-    margin: 0 0.5rem;
-    font-size: 0.75rem;
-  }
-
-  :global(.breadcrumb-current) {
-    color: #6b6b6b;
-    font-weight: 600;
-    max-width: 240px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 0.125rem 0;
-  }
-
-  .doc-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-shrink: 0;
-  }
-
-  .action-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
-    background: transparent;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-size: 0.8125rem;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .action-btn:hover {
-    background: var(--hover-bg);
-    color: var(--text-primary);
-  }
-
-  .action-btn.primary {
-    background: var(--text-primary);
-    border-color: var(--text-primary);
-    color: white;
-  }
-
-  .action-btn.primary:hover {
-    background: #1a1a1a;
-  }
-
-  .action-icon {
-    font-size: 0.875rem;
-  }
-
-  .doc-main {
-    flex: 1;
-    overflow-y: auto;
-  }
-
-  .doc-content-wrapper {
-    display: grid;
-    grid-template-columns: 240px 1fr 240px;
-    width: 100%;
-    min-height: calc(100vh - var(--header-height));
-  }
-
-  .doc-outline {
-    position: sticky;
-    top: calc(var(--header-height) + 1.5rem);
-    align-self: flex-start;
-    max-height: calc(100vh - var(--header-height) - 3rem);
-    overflow-y: auto;
-    padding: 1.5rem 0.5rem 1.5rem 1rem;
-  }
-
-  .doc-outline :global(.outline-header) {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.75rem;
-    padding: 0 8px;
-  }
-
-  .doc-outline :global(.outline-list) {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .doc-outline :global(.outline-empty) {
-    font-size: 0.8125rem;
-    color: var(--text-tertiary);
-    padding: 0 8px;
-    font-style: italic;
-  }
-
-  .doc-outline :global(.outline-item) {
-    position: relative;
-    padding: 0.4rem 8px;
-    border-radius: 4px;
-    transition: background 0.15s ease;
-  }
-
-  .doc-outline :global(.outline-item::before) {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: transparent;
-    border-radius: 1px;
-    transition: background 0.15s ease;
-  }
-
-  .doc-outline :global(.outline-item.active::before) {
-    background: var(--text-primary);
-  }
-
-  .doc-outline :global(.outline-item.active) {
-    background: var(--hover-bg);
-  }
-
-  .doc-outline :global(.outline-item:hover) {
-    background: var(--hover-bg);
-  }
-
-  .doc-outline :global(.outline-link) {
-    display: block;
-    font-size: 0.8125rem;
-    color: var(--text-tertiary);
-    text-decoration: none;
-    line-height: 1.75;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    transition: color 0.15s ease;
-  }
-
-  .doc-outline :global(.outline-item.active .outline-link) {
-    color: var(--text-primary);
-    font-weight: 500;
-  }
-
-  .doc-outline :global(.outline-link:hover) {
-    color: var(--text-primary);
-  }
-
-  .doc-container {
-    max-width: var(--content-max-width);
-    justify-self: center;
-    width: 100%;
-    padding: 3rem 2rem 3rem 2rem;
-  }
-
-  .doc-annotations {
-    position: sticky;
-    top: calc(var(--header-height) + 1.5rem);
-    align-self: flex-start;
-    max-height: calc(100vh - var(--header-height) - 3rem);
-    overflow-y: auto;
-    padding: 1.5rem 1.5rem 1.5rem 0.5rem;
-    border-left: 1px solid var(--border-color);
-  }
-
-  .doc-annotations :global(.annotations-header) {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 1rem;
-  }
-
-  .doc-annotations :global(.annotations-placeholder) {
-    font-size: 0.8125rem;
-    color: var(--text-tertiary);
-    line-height: 1.6;
-  }
-
-  .doc-annotations :global(.annotations-placeholder p) {
-    margin: 0;
-  }
-
-  .doc-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    line-height: 1.2;
-    margin-bottom: 1.5rem;
-    outline: none;
-    border: none;
-    min-height: 1.2em;
-  }
-
-  .doc-title:empty::before {
-    content: attr(data-placeholder);
-    color: var(--text-tertiary);
-  }
-
-  .doc-title:focus {
-    border-bottom: 2px solid var(--border-color);
-  }
-
-  .doc-editor {
-    margin-top: 1rem;
-  }
-
-  @media (max-width: 768px) {
-    .doc-layout {
-      margin-left: 0;
-    }
-
-    .doc-outline {
-      display: none;
-    }
-
-    .doc-annotations {
-      display: none;
-    }
-
-    .doc-main {
-      padding: 1.5rem;
-    }
-
-    .doc-container {
-      padding: 0;
-    }
-
-    .doc-header-content {
-      padding: 0 1rem;
-    }
-  }
-</style>
-</body>
