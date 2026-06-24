@@ -8,6 +8,8 @@ import {
   DocMessageType,
 } from './protocol';
 
+const STORAGE_KEY_PREFIX = 'yjs_unsynced_';
+
 export class DocWebSocketProvider {
   private ws: WebSocket | null = null;
   private doc: Y.Doc;
@@ -17,6 +19,7 @@ export class DocWebSocketProvider {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private updateHandler: (update: Uint8Array, origin: any) => void;
   private handlerRegistered: boolean = false;
+  private storageKey: string;
 
   constructor(
     doc: Y.Doc,
@@ -25,6 +28,7 @@ export class DocWebSocketProvider {
   ) {
     this.doc = doc;
     this.roomName = roomName;
+    this.storageKey = STORAGE_KEY_PREFIX + roomName;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = options.baseUrl || window.location.host;
@@ -36,10 +40,48 @@ export class DocWebSocketProvider {
         console.log('[WS] update skipped (self-origin)');
         return;
       }
+      // Cache local edits to sessionStorage so they survive a page refresh
+      // before the server acknowledges them.
+      this.cacheUnsynced();
       this.sendUpdate(update);
     };
 
     this.connect();
+  }
+
+  /** Persist the current doc state to sessionStorage.
+   *  Called on every local edit so that a refresh before WS sync
+   *  doesn't lose data. Cleared once the server acknowledges sync. */
+  private cacheUnsynced() {
+    try {
+      const update = Y.encodeStateAsUpdate(this.doc);
+      const base64 = btoa(String.fromCharCode(...update));
+      sessionStorage.setItem(this.storageKey, base64);
+    } catch (e) {
+      console.warn('[WS] Failed to cache unsynced content:', e);
+    }
+  }
+
+  /** Remove the unsynced cache. Called after a successful sync with the
+   *  server, which means the server has our latest state. */
+  private clearUnsyncedCache() {
+    try {
+      sessionStorage.removeItem(this.storageKey);
+    } catch (_) {}
+  }
+
+  /** Load any previously cached unsynced content for this room.
+   *  Should be called once during doc initialization, before the WS
+   *  connection is established. */
+  static loadUnsyncedCache(roomName: string): Uint8Array | null {
+    try {
+      const base64 = sessionStorage.getItem(STORAGE_KEY_PREFIX + roomName);
+      if (!base64) return null;
+      const binary = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      return binary.length > 0 ? binary : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   private connect() {
@@ -118,6 +160,9 @@ export class DocWebSocketProvider {
         if (!this.synced) {
           this.synced = true;
           this.registerUpdateHandler();
+          // Server has acknowledged our state — safe to clear the
+          // unsynced cache since the server now has our latest edits.
+          this.clearUnsyncedCache();
         }
         break;
       }

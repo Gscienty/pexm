@@ -7,6 +7,26 @@ import './styles.css';
 
 const siteName = "笔阵";
 const { id } = Astro.params;
+
+// Server-side: fetch paper content so the Y.Doc is initialized before
+// the WebSocket connection is established. This prevents an empty-doc
+// update from overwriting existing server-side content.
+let initialContent = '';
+if (id) {
+  try {
+    const cookie = Astro.request.headers.get('cookie') || '';
+    const bffBase = process.env.BFF_ADDR || 'http://127.0.0.1:3000';
+    const res = await fetch(`${bffBase}/api/papers/${id}/content`, {
+      headers: { cookie },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      initialContent = data.content || '';
+    }
+  } catch (e) {
+    console.warn('[doc/[id]] Failed to fetch initial content:', e);
+  }
+}
 ---
 
 <html lang="zh-CN">
@@ -49,7 +69,7 @@ const { id } = Astro.params;
           <div class="doc-container" id="docContainer">
             <div class="doc-title" contenteditable="true" data-placeholder="试卷标题" id="docTitle"></div>
 
-            <TiptapEditor content="" docName={id || 'new'} placeholder="输入 / 以使用命令..." class="doc-editor" />
+            <TiptapEditor content="" docName={id || 'new'} initialContent={initialContent} placeholder="输入 / 以使用命令..." class="doc-editor" />
           </div>
 
           <aside class="doc-annotations" id="docAnnotations">
@@ -61,11 +81,26 @@ const { id } = Astro.params;
         </div>
 
         <div class="doc-preview-panel" id="docPreviewPanel">
-          <button class="preview-fullscreen-btn" id="btnFullscreen" title="全屏预览">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/>
-            </svg>
-          </button>
+          <div class="preview-toolbar">
+            <button class="preview-toolbar-btn" id="btnZoom" title="缩放：适配宽度">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="6.5" cy="6.5" r="4.5"/>
+                <path d="M10 10l4 4"/>
+                <path d="M4.5 6.5h4M6.5 4.5v4"/>
+              </svg>
+            </button>
+            <button class="preview-toolbar-btn" id="btnRefresh" title="刷新预览">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M13.5 2.5v4h-4M2.5 13.5v-4h4"/>
+                <path d="M3.5 6A5 5 0 0 1 13 5.5l.5 1M12.5 10A5 5 0 0 1 3 10.5L2.5 9.5"/>
+              </svg>
+            </button>
+            <button class="preview-toolbar-btn" id="btnFullscreen" title="全屏预览">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/>
+              </svg>
+            </button>
+          </div>
           <div class="preview-content" id="previewContent">
             <div class="preview-placeholder">
               <div class="preview-placeholder-icon">📄</div>
@@ -92,7 +127,7 @@ const { id } = Astro.params;
       const title = await initBreadcrumb(paperId, spaceToken);
       initTitleEditor(paperId, title || '');
       initOutline();
-      initPreview();
+      initPreview(paperId);
     }
 
     init();

@@ -3,13 +3,13 @@ syntax = "proto3";
 package clsi;
 
 service ClsiService {
-  // 将 doc json 结构编译为 pdf 文件
+  // 将 yjs 文档内容编译为 pdf 文件
   rpc CompilePdf(CompilePdfRequest) returns (CompilePdfResponse);
 }
 
 message CompilePdfRequest {
-  // doc json 内容
-  string doc_json = 1;
+  // yjs 文档二进制内容 (Y.encodeStateAsUpdate)
+  bytes yjs_content = 1;
 }
 
 message CompilePdfResponse {

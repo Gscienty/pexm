@@ -1208,6 +1208,7 @@ version = "0.1.0"
 dependencies = [
  "auth-lib",
  "axum",
+ "base64",
  "futures",
  "futures-util",
  "prost",

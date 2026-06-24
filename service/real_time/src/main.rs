@@ -83,17 +83,21 @@ async fn main() {
                             Err(e) => tracing::error!("Failed to store DocRoom {}: {}", paper_id, e),
                         }
                     }
-                    DocRoomCallbackMessage::PreDestory(id, content) => {
+                    DocRoomCallbackMessage::PreDestory(id) => {
                         let paper_id = id as i64;
 
-                        // 1. Immediately remove from active rooms so new connections
-                        //    don't get a dead cmd, and stash content as pending.
-                        callback_state.room_set.pre_destory_room(id, content).await;
-                        info!("DocRoom {} pre-destoryed (removed from active, content pending)", paper_id);
+                        // 1. Remove the closed room from the active map.
+                        //    Only removes if the room is still closed (not
+                        //    replaced by a new WebSocket connection).
+                        callback_state.room_set.remove_closed_room(id).await;
+                        info!("DocRoom {} removed from active map", paper_id);
 
-                        // 2. Persist content to dal.
-                        let pending = callback_state.room_set.take_pending_content(id).await;
-                        if let Some(content) = pending {
+                        // 2. Persist pending content to dal.
+                        //    Use get_pending_content (read-only, sync) so that
+                        //    concurrent get_content calls can still find the
+                        //    data while the DAL write is in flight.
+                        let content = callback_state.room_set.get_pending_content(id);
+                        if let Some(content) = content {
                             if !content.is_empty() {
                                 let mut client = callback_state.dal.clone();
                                 match client
@@ -107,10 +111,11 @@ async fn main() {
                                     Err(e) => tracing::error!("Failed to store DocRoom {} on destory: {}", paper_id, e),
                                 }
                             }
+
+                            // 3. Clear pending AFTER dal confirms the write.
+                            callback_state.room_set.clear_pending(id);
                         }
 
-                        // 3. Clear pending (already taken, but clean up just in case).
-                        callback_state.room_set.clear_pending(id).await;
                         info!("DocRoom {} fully destoryed", paper_id);
                     }
                 }
@@ -122,6 +127,10 @@ async fn main() {
         .route(
             "/api/websocket/doc/{token}",
             get(handler::websocket::websocket_handler),
+        )
+        .route(
+            "/api/doc/{id}/content",
+            get(handler::content::get_paper_content),
         )
         .layer(CorsLayer::permissive())
         .with_state(state);

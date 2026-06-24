@@ -29,3 +29,17 @@ export function escapeHtml(str: string): string {
   div.textContent = str;
   return div.innerHTML;
 }
+
+/** Compile a paper to PDF via the BFF compile-pdf endpoint.
+ *  Returns a Blob containing the PDF data. */
+export async function compilePdf(paperToken: string): Promise<Blob> {
+  const res = await fetch(`${BFF_BASE}/api/papers/${encodeURIComponent(paperToken)}/compile-pdf`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(text || `编译失败 (${res.status})`);
+  }
+  return res.blob();
+}

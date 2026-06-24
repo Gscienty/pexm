@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let clsi_service = ClsiServiceHandler::new();
 
-    let addr = "0.0.0.0:5000".parse()?;
+    let addr = "0.0.0.0:5001".parse()?;
 
     info!("Clsi gRPC server listening on {}", addr);
 

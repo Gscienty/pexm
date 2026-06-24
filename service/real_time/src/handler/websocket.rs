@@ -32,7 +32,7 @@ pub async fn websocket_handler(
             cmd
         } else {
             // Check pending content first (room recently exited, not yet persisted to dal).
-            let doc_binary = if let Some(content) = state.room_set.take_pending_content(paper_id as u64).await {
+            let doc_binary = if let Some(content) = state.room_set.take_pending_content(paper_id as u64) {
                 tracing::info!("Using pending content for paper {}", paper_id);
                 content
             } else {

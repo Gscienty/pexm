@@ -11,10 +11,11 @@ use tracing::info;
 use auth_lib::{jot::Jot, JotProvider};
 
 use crate::config::Config;
-use crate::rpcclient::DalClient;
+use crate::rpcclient::{ClsiClient, DalClient};
 
 pub struct AppState {
     pub dal: DalClient,
+    pub clsi: ClsiClient,
     pub jot: Arc<Jot>,
 }
 
@@ -57,7 +58,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dal = DalClient::connect(config.dal.addr.clone()).await?;
     info!("Connected to dal service at {}", config.dal.addr);
 
-    let state = Arc::new(AppState { dal, jot });
+    let clsi = ClsiClient::connect(config.clsi.addr.clone()).await?;
+    info!("Connected to clsi service at {}", config.clsi.addr);
+
+    let state = Arc::new(AppState { dal, clsi, jot });
 
     let app = Router::new()
         .merge(handler::routes(state.clone()));

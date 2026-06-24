@@ -4,13 +4,14 @@ export interface Props {
   class?: string;
   docName?: string;
   wsUrl?: string;
+  initialContent?: string;
 }
 
-const { content = '', class: className = '', docName = '', wsUrl = '' } = Astro.props;
+const { content = '', class: className = '', docName = '', wsUrl = '', initialContent = '' } = Astro.props;
 ---
 
 <div class={`tiptap-wrapper ${className}`}>
-  <div class="editor" data-content={content} data-doc-name={docName} data-ws-url={wsUrl}></div>
+  <div class="editor" data-content={content} data-doc-name={docName} data-ws-url={wsUrl} data-initial-content={initialContent}></div>
 </div>
 
 <script>
@@ -29,6 +30,7 @@ const { content = '', class: className = '', docName = '', wsUrl = '' } = Astro.
     const content = element.dataset.content || '';
     const docName = element.dataset.docName || '';
     const wsUrl = element.dataset.wsUrl || '';
+    const initialContent = element.dataset.initialContent || '';
 
     const extensions = [
       StarterKit.configure({
@@ -41,7 +43,7 @@ const { content = '', class: className = '', docName = '', wsUrl = '' } = Astro.
     ];
 
     if (docName) {
-      extensions.push(Collaboration.configure({ docName, wsUrl }));
+      extensions.push(Collaboration.configure({ docName, wsUrl, initialContent }));
     }
 
     new Editor({
