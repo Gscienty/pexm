@@ -5,6 +5,7 @@ package dal;
 import "dal/auth.proto";
 import "dal/exam_space.proto";
 import "dal/directory.proto";
+import "dal/paper_template.proto";
 
 service DalService {
   rpc Register(RegisterRequest) returns (RegisterResponse);
@@ -39,4 +40,14 @@ service DalService {
   rpc GetPaperBreadcrumb(GetPaperBreadcrumbRequest) returns (GetPaperBreadcrumbResponse);
   rpc StorePaperContent(StorePaperContentRequest) returns (StorePaperContentResponse);
   rpc LoadPaperContent(LoadPaperContentRequest) returns (LoadPaperContentResponse);
+  rpc SetPaperTemplate(SetPaperTemplateRequest) returns (SetPaperTemplateResponse);
+
+  // paper_template
+  rpc CreatePaperTemplate(CreatePaperTemplateRequest) returns (CreatePaperTemplateResponse);
+  rpc UpdatePaperTemplate(UpdatePaperTemplateRequest) returns (Empty);
+  rpc DeletePaperTemplate(DeletePaperTemplateRequest) returns (Empty);
+  rpc GetPaperTemplate(GetPaperTemplateRequest) returns (GetPaperTemplateResponse);
+  rpc ListPaperTemplates(ListPaperTemplatesRequest) returns (ListPaperTemplatesResponse);
+  rpc StorePaperTemplateContent(StorePaperTemplateContentRequest) returns (StorePaperTemplateContentResponse);
+  rpc LoadPaperTemplateContent(LoadPaperTemplateContentRequest) returns (LoadPaperTemplateContentResponse);
 }

@@ -1,4 +1,5 @@
 use async_graphql::{Context, Object};
+use base64::Engine;
 
 use auth_lib::claim::Claim;
 
@@ -11,6 +12,19 @@ use crate::rpcclient::dal::{
 };
 
 use super::types::*;
+
+fn paper_to_gql(p: crate::rpcclient::dal::Paper) -> GqlPaper {
+    GqlPaper {
+        id: p.id,
+        exam_space_id: p.exam_space_id,
+        directory_id: p.directory_id,
+        title: p.title,
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+        template_id: p.template_id,
+        template_config: base64::engine::general_purpose::STANDARD.encode(&p.template_config),
+    }
+}
 
 pub struct Query;
 
@@ -170,14 +184,7 @@ impl Query {
                 created_at: d.created_at,
                 updated_at: d.updated_at,
             }).collect(),
-            papers: response.papers.into_iter().map(|p| GqlPaper {
-                id: p.id,
-                exam_space_id: p.exam_space_id,
-                directory_id: p.directory_id,
-                title: p.title,
-                created_at: p.created_at,
-                updated_at: p.updated_at,
-            }).collect(),
+            papers: response.papers.into_iter().map(paper_to_gql).collect(),
         })
     }
 
@@ -240,14 +247,7 @@ impl Query {
                 id: i.id,
                 name: i.name,
             }).collect(),
-            paper: GqlPaper {
-                id: paper.id,
-                exam_space_id: paper.exam_space_id,
-                directory_id: paper.directory_id,
-                title: paper.title,
-                created_at: paper.created_at,
-                updated_at: paper.updated_at,
-            },
+            paper: paper_to_gql(paper),
         })
     }
 }
@@ -421,14 +421,7 @@ impl Mutation {
             .find(|p| p.id == create_response.id)
             .ok_or("created paper not found")?;
 
-        Ok(GqlPaper {
-            id: paper.id,
-            exam_space_id: paper.exam_space_id,
-            directory_id: paper.directory_id,
-            title: paper.title,
-            created_at: paper.created_at,
-            updated_at: paper.updated_at,
-        })
+        Ok(paper_to_gql(paper))
     }
 
     async fn update_paper(

@@ -10,6 +10,7 @@ use crate::dal::{
     GetPaperBreadcrumbRequest, GetPaperBreadcrumbResponse,
     ListDirectoryChildrenRequest, ListDirectoryChildrenResponse,
     MoveDirectoryRequest, MovePaperRequest, Paper,
+    SetPaperTemplateRequest, SetPaperTemplateResponse,
     StorePaperContentRequest, StorePaperContentResponse,
     LoadPaperContentRequest, LoadPaperContentResponse,
     UpdateDirectoryRequest, UpdatePaperRequest,
@@ -141,6 +142,8 @@ impl DirectoryHandler {
                 title: p.title,
                 created_at: p.created_at,
                 updated_at: p.updated_at,
+                template_id: p.template_id.unwrap_or(0),
+                template_config: p.template_config.unwrap_or_default(),
             })
             .collect();
 
@@ -281,6 +284,8 @@ impl DirectoryHandler {
                 title: paper.title,
                 created_at: paper.created_at,
                 updated_at: paper.updated_at,
+                template_id: paper.template_id.unwrap_or(0),
+                template_config: paper.template_config.unwrap_or_default(),
             }),
         }))
     }
@@ -314,5 +319,27 @@ impl DirectoryHandler {
             .unwrap_or_default();
 
         Ok(Response::new(LoadPaperContentResponse { content }))
+    }
+
+    pub async fn set_paper_template(
+        &self,
+        request: Request<SetPaperTemplateRequest>,
+    ) -> Result<Response<SetPaperTemplateResponse>, Status> {
+        let req = request.into_inner();
+        let template_id = if req.template_id == 0 { None } else { Some(req.template_id) };
+        let template_config = if req.template_config.is_empty() { None } else { Some(req.template_config.as_slice()) };
+
+        self.paper_db
+            .set_paper_template(req.id, template_id, template_config)
+            .await
+            .map_err(|e| Status::internal(e))?;
+
+        info!(
+            "Paper template set: id={}, template_id={:?}, config_size={}",
+            req.id,
+            template_id,
+            req.template_config.len()
+        );
+        Ok(Response::new(SetPaperTemplateResponse {}))
     }
 }

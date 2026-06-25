@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package dal;
+
+// 试卷模板实体：模板是一个大的 Lua 文件，包含若干函数用于输出配置或 LaTeX 内容
+message PaperTemplate {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  string created_at = 4;
+  string updated_at = 5;
+  bytes preview = 6;   // 预览图（PNG/JPEG 等二进制）
+}
+
+// --- PaperTemplate CRUD ---
+
+message CreatePaperTemplateRequest {
+  string name = 1;
+  string description = 2;
+}
+
+message CreatePaperTemplateResponse {
+  int64 id = 1;
+}
+
+message UpdatePaperTemplateRequest {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  bytes preview = 4;   // 预览图（空 bytes 表示清除）
+}
+
+message DeletePaperTemplateRequest {
+  int64 id = 1;
+}
+
+message GetPaperTemplateRequest {
+  int64 id = 1;
+}
+
+message GetPaperTemplateResponse {
+  PaperTemplate template = 1;
+}
+
+message ListPaperTemplatesRequest {}
+
+message ListPaperTemplatesResponse {
+  repeated PaperTemplate templates = 1;
+}
+
+// --- PaperTemplate Content (Lua script BLOB) ---
+
+message StorePaperTemplateContentRequest {
+  int64 id = 1;
+  bytes content = 2;
+}
+
+message StorePaperTemplateContentResponse {}
+
+message LoadPaperTemplateContentRequest {
+  int64 id = 1;
+}
+
+message LoadPaperTemplateContentResponse {
+  bytes content = 1; // empty if no content stored
+}

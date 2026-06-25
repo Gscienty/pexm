@@ -18,6 +18,8 @@ message Paper {
   string title = 4;
   string created_at = 5;
   string updated_at = 6;
+  int64 template_id = 7;             // 0 means no associated template
+  bytes template_config = 8;          // template-specific configuration (Blob)
 }
 
 // --- Directory CRUD ---
@@ -123,3 +125,13 @@ message LoadPaperContentRequest {
 message LoadPaperContentResponse {
   bytes content = 1; // empty if no content stored
 }
+
+// --- Paper Template Association ---
+
+message SetPaperTemplateRequest {
+  int64 id = 1;
+  int64 template_id = 2;       // 0 to clear association
+  bytes template_config = 3;   // template-specific configuration (Blob)
+}
+
+message SetPaperTemplateResponse {}

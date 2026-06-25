@@ -72,6 +72,8 @@ pub struct GqlPaper {
     pub title: String,
     pub created_at: String,
     pub updated_at: String,
+    pub template_id: i64,
+    pub template_config: String, // base64-encoded Blob
 }
 
 #[derive(SimpleObject, Clone)]

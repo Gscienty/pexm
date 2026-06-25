@@ -93,6 +93,7 @@ pub trait PaperRepo: Send + Sync {
     async fn count_papers_by_space(&self, exam_space_id: i64) -> Result<i64, String>;
     async fn store_paper_content(&self, id: i64, content: &[u8]) -> Result<(), String>;
     async fn load_paper_content(&self, id: i64) -> Result<Option<Vec<u8>>, String>;
+    async fn set_paper_template(&self, id: i64, template_id: Option<i64>, template_config: Option<&[u8]>) -> Result<(), String>;
 }
 
 pub struct PaperRow {
@@ -101,6 +102,28 @@ pub struct PaperRow {
     pub directory_id: Option<i64>,
     pub title: String,
     pub content: Option<Vec<u8>>,
+    pub template_id: Option<i64>,
+    pub template_config: Option<Vec<u8>>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[async_trait]
+pub trait PaperTemplateRepo: Send + Sync {
+    async fn create_paper_template(&self, name: &str, description: &str) -> Result<i64, String>;
+    async fn update_paper_template(&self, id: i64, name: &str, description: &str, preview: Option<&[u8]>) -> Result<(), String>;
+    async fn delete_paper_template(&self, id: i64) -> Result<(), String>;
+    async fn find_paper_template_by_id(&self, id: i64) -> Result<Option<PaperTemplateRow>, String>;
+    async fn find_all_paper_templates(&self) -> Result<Vec<PaperTemplateRow>, String>;
+    async fn store_paper_template_content(&self, id: i64, content: &[u8]) -> Result<(), String>;
+    async fn load_paper_template_content(&self, id: i64) -> Result<Option<Vec<u8>>, String>;
+}
+
+pub struct PaperTemplateRow {
+    pub id: i64,
+    pub name: String,
+    pub description: String,
+    pub preview: Option<Vec<u8>>,
     pub created_at: String,
     pub updated_at: String,
 }

@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod exam_space;
 pub mod directory;
+pub mod paper_template;
 
 use tonic::{Request, Response, Status};
 
@@ -8,35 +9,48 @@ use crate::dal::{
     dal_service_server::DalService,
     AddExamSpaceMemberRequest, AddExamSpaceMemberResponse, CreateDirectoryRequest,
     CreateDirectoryResponse, CreateExamSpaceRequest, CreateExamSpaceResponse,
-    CreatePaperRequest, CreatePaperResponse, DeleteDirectoryRequest, DeletePaperRequest,
-    DeleteExamSpaceRequest, Empty,
+    CreatePaperRequest, CreatePaperResponse, CreatePaperTemplateRequest,
+    CreatePaperTemplateResponse, DeleteDirectoryRequest, DeletePaperRequest,
+    DeleteExamSpaceRequest, DeletePaperTemplateRequest, Empty,
     GetDirectoryBreadcrumbRequest, GetDirectoryBreadcrumbResponse,
     GetExamSpaceByTokenRequest, GetExamSpaceByTokenResponse,
     GetPaperBreadcrumbRequest, GetPaperBreadcrumbResponse,
+    GetPaperTemplateRequest, GetPaperTemplateResponse,
     ListDirectoryChildrenRequest, ListDirectoryChildrenResponse,
     ListExamSpaceMembersRequest, ListExamSpaceMembersResponse,
     ListExamSpacesRequest, ListExamSpacesResponse,
+    ListPaperTemplatesRequest, ListPaperTemplatesResponse,
     LoadPaperContentRequest, LoadPaperContentResponse,
+    LoadPaperTemplateContentRequest, LoadPaperTemplateContentResponse,
     LoginByEmailRequest, LoginByEmailResponse, MoveDirectoryRequest, MovePaperRequest,
     RegisterRequest, RegisterResponse, RemoveExamSpaceMemberRequest,
+    SetPaperTemplateRequest, SetPaperTemplateResponse,
     StorePaperContentRequest, StorePaperContentResponse,
+    StorePaperTemplateContentRequest, StorePaperTemplateContentResponse,
     UpdateDirectoryRequest, UpdateExamSpaceMemberRequest, UpdateExamSpaceRequest,
-    UpdatePaperRequest,
+    UpdatePaperRequest, UpdatePaperTemplateRequest,
 };
 use auth::AuthHandler;
 use exam_space::ExamSpaceHandler;
 use directory::DirectoryHandler;
+use paper_template::PaperTemplateHandler;
 
 #[derive(Clone)]
 pub struct DalServiceHandler {
     auth: AuthHandler,
     exam_space: ExamSpaceHandler,
     directory: DirectoryHandler,
+    paper_template: PaperTemplateHandler,
 }
 
 impl DalServiceHandler {
-    pub fn new(auth: AuthHandler, exam_space: ExamSpaceHandler, directory: DirectoryHandler) -> Self {
-        Self { auth, exam_space, directory }
+    pub fn new(
+        auth: AuthHandler,
+        exam_space: ExamSpaceHandler,
+        directory: DirectoryHandler,
+        paper_template: PaperTemplateHandler,
+    ) -> Self {
+        Self { auth, exam_space, directory, paper_template }
     }
 }
 
@@ -212,5 +226,63 @@ impl DalService for DalServiceHandler {
         request: Request<LoadPaperContentRequest>,
     ) -> Result<Response<LoadPaperContentResponse>, Status> {
         self.directory.load_paper_content(request).await
+    }
+
+    async fn set_paper_template(
+        &self,
+        request: Request<SetPaperTemplateRequest>,
+    ) -> Result<Response<SetPaperTemplateResponse>, Status> {
+        self.directory.set_paper_template(request).await
+    }
+
+    // --- PaperTemplate ---
+
+    async fn create_paper_template(
+        &self,
+        request: Request<CreatePaperTemplateRequest>,
+    ) -> Result<Response<CreatePaperTemplateResponse>, Status> {
+        self.paper_template.create_paper_template(request).await
+    }
+
+    async fn update_paper_template(
+        &self,
+        request: Request<UpdatePaperTemplateRequest>,
+    ) -> Result<Response<Empty>, Status> {
+        self.paper_template.update_paper_template(request).await
+    }
+
+    async fn delete_paper_template(
+        &self,
+        request: Request<DeletePaperTemplateRequest>,
+    ) -> Result<Response<Empty>, Status> {
+        self.paper_template.delete_paper_template(request).await
+    }
+
+    async fn get_paper_template(
+        &self,
+        request: Request<GetPaperTemplateRequest>,
+    ) -> Result<Response<GetPaperTemplateResponse>, Status> {
+        self.paper_template.get_paper_template(request).await
+    }
+
+    async fn list_paper_templates(
+        &self,
+        request: Request<ListPaperTemplatesRequest>,
+    ) -> Result<Response<ListPaperTemplatesResponse>, Status> {
+        self.paper_template.list_paper_templates(request).await
+    }
+
+    async fn store_paper_template_content(
+        &self,
+        request: Request<StorePaperTemplateContentRequest>,
+    ) -> Result<Response<StorePaperTemplateContentResponse>, Status> {
+        self.paper_template.store_paper_template_content(request).await
+    }
+
+    async fn load_paper_template_content(
+        &self,
+        request: Request<LoadPaperTemplateContentRequest>,
+    ) -> Result<Response<LoadPaperTemplateContentResponse>, Status> {
+        self.paper_template.load_paper_template_content(request).await
     }
 }

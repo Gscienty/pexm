@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use tracing::info;
 
-use super::{ExamSpaceMemberRepo, ExamSpaceMemberRow, ExamSpaceRepo, ExamSpaceRow, UserRepo, UserRow, DirectoryRepo, DirectoryRow, BreadcrumbItem, PaperRepo, PaperRow};
+use super::{ExamSpaceMemberRepo, ExamSpaceMemberRow, ExamSpaceRepo, ExamSpaceRow, UserRepo, UserRow, DirectoryRepo, DirectoryRow, BreadcrumbItem, PaperRepo, PaperRow, PaperTemplateRepo, PaperTemplateRow};
 
 /// Snowflake-like ID generator (epoch: 2024-01-01T00:00:00Z)
 static LAST_MS: AtomicU64 = AtomicU64::new(0);
@@ -148,8 +148,18 @@ impl ExamSpaceRepo for SqliteDb {
 
     async fn delete_exam_space(&self, id: i64) -> Result<(), String> {
         let conn = self.conn.lock().await;
+        // Cascade cleanup (formerly DB-level ON DELETE CASCADE, now in code):
+        // 1. members
         conn.execute("DELETE FROM exam_space_members WHERE exam_space_id = ?1", params![id])
             .map_err(|e| e.to_string())?;
+        // 2. papers belonging to this space
+        conn.execute("DELETE FROM papers WHERE exam_space_id = ?1", params![id])
+            .map_err(|e| e.to_string())?;
+        // 3. directories belonging to this space (exam_space_id is stored on every row,
+        //    so a single statement covers the whole subtree regardless of nesting)
+        conn.execute("DELETE FROM directories WHERE exam_space_id = ?1", params![id])
+            .map_err(|e| e.to_string())?;
+        // 4. the exam space itself
         conn.execute("DELETE FROM exam_spaces WHERE id = ?1", params![id])
             .map_err(|e| e.to_string())?;
         Ok(())
@@ -374,10 +384,12 @@ impl DirectoryRepo for SqliteDb {
 
     async fn delete_directory(&self, id: i64) -> Result<(), String> {
         let conn = self.conn.lock().await;
-        // Move papers in this directory to root (set directory_id to NULL)
+        // Application-level cleanup (formerly DB-level ON DELETE SET NULL on papers.directory_id):
+        // move papers in this directory to root (set directory_id to NULL)
         conn.execute("UPDATE papers SET directory_id = NULL WHERE directory_id = ?1", params![id])
             .map_err(|e| e.to_string())?;
-        // Move sub-directories to parent of this directory
+        // Sub-directories are re-parented to this directory's parent rather than cascade-deleted,
+        // so the subtree is preserved.
         let parent_id: Option<i64> = conn
             .query_row("SELECT parent_id FROM directories WHERE id = ?1", params![id], |row| row.get(0))
             .map_err(|e| e.to_string())?;
@@ -571,8 +583,8 @@ impl PaperRepo for SqliteDb {
     async fn find_papers_by_directory(&self, exam_space_id: i64, directory_id: Option<i64>) -> Result<Vec<PaperRow>, String> {
         let conn = self.conn.lock().await;
         let sql = match directory_id {
-            Some(_) => "SELECT id, exam_space_id, directory_id, title, created_at, updated_at FROM papers WHERE exam_space_id = ?1 AND directory_id = ?2 ORDER BY title ASC",
-            None => "SELECT id, exam_space_id, directory_id, title, created_at, updated_at FROM papers WHERE exam_space_id = ?1 AND directory_id IS NULL ORDER BY title ASC",
+            Some(_) => "SELECT id, exam_space_id, directory_id, title, template_id, template_config, created_at, updated_at FROM papers WHERE exam_space_id = ?1 AND directory_id = ?2 ORDER BY title ASC",
+            None => "SELECT id, exam_space_id, directory_id, title, template_id, template_config, created_at, updated_at FROM papers WHERE exam_space_id = ?1 AND directory_id IS NULL ORDER BY title ASC",
         };
         let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
         let rows = match directory_id {
@@ -584,8 +596,10 @@ impl PaperRepo for SqliteDb {
                         directory_id: row.get(2)?,
                         title: row.get(3)?,
                         content: None,
-                        created_at: row.get(4)?,
-                        updated_at: row.get(5)?,
+                        template_id: row.get(4)?,
+                        template_config: row.get(5)?,
+                        created_at: row.get(6)?,
+                        updated_at: row.get(7)?,
                     })
                 })
                 .map_err(|e| e.to_string())?
@@ -599,8 +613,10 @@ impl PaperRepo for SqliteDb {
                         directory_id: row.get(2)?,
                         title: row.get(3)?,
                         content: None,
-                        created_at: row.get(4)?,
-                        updated_at: row.get(5)?,
+                        template_id: row.get(4)?,
+                        template_config: row.get(5)?,
+                        created_at: row.get(6)?,
+                        updated_at: row.get(7)?,
                     })
                 })
                 .map_err(|e| e.to_string())?
@@ -613,7 +629,7 @@ impl PaperRepo for SqliteDb {
     async fn find_paper_by_id(&self, id: i64) -> Result<Option<PaperRow>, String> {
         let conn = self.conn.lock().await;
         let mut stmt = conn
-            .prepare("SELECT id, exam_space_id, directory_id, title, created_at, updated_at FROM papers WHERE id = ?1")
+            .prepare("SELECT id, exam_space_id, directory_id, title, template_id, template_config, created_at, updated_at FROM papers WHERE id = ?1")
             .map_err(|e| e.to_string())?;
         let result = stmt.query_row(params![id], |row| {
             Ok(PaperRow {
@@ -622,8 +638,10 @@ impl PaperRepo for SqliteDb {
                 directory_id: row.get(2)?,
                 title: row.get(3)?,
                 content: None,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
+                template_id: row.get(4)?,
+                template_config: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
             })
         });
         match result {
@@ -664,6 +682,135 @@ impl PaperRepo for SqliteDb {
         let result = conn
             .query_row(
                 "SELECT content FROM papers WHERE id = ?1",
+                params![id],
+                |row| row.get::<_, Option<Vec<u8>>>(0),
+            );
+        match result {
+            Ok(content) => Ok(content),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.to_string()),
+        }
+    }
+
+    async fn set_paper_template(&self, id: i64, template_id: Option<i64>, template_config: Option<&[u8]>) -> Result<(), String> {
+        let conn = self.conn.lock().await;
+        let affected = conn
+            .execute(
+                "UPDATE papers SET template_id = ?1, template_config = ?2, updated_at = datetime('now') WHERE id = ?3",
+                params![template_id, template_config, id],
+            )
+            .map_err(|e| e.to_string())?;
+        if affected == 0 {
+            return Err("paper not found".to_string());
+        }
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl PaperTemplateRepo for SqliteDb {
+    async fn create_paper_template(&self, name: &str, description: &str) -> Result<i64, String> {
+        let conn = self.conn.lock().await;
+        conn.execute(
+            "INSERT INTO paper_templates (name, description) VALUES (?1, ?2)",
+            params![name, description],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(conn.last_insert_rowid())
+    }
+
+    async fn update_paper_template(&self, id: i64, name: &str, description: &str, preview: Option<&[u8]>) -> Result<(), String> {
+        let conn = self.conn.lock().await;
+        let affected = conn
+            .execute(
+                "UPDATE paper_templates SET name = ?1, description = ?2, preview = ?3, updated_at = datetime('now') WHERE id = ?4",
+                params![name, description, preview, id],
+            )
+            .map_err(|e| e.to_string())?;
+        if affected == 0 {
+            return Err("paper template not found".to_string());
+        }
+        Ok(())
+    }
+
+    async fn delete_paper_template(&self, id: i64) -> Result<(), String> {
+        let conn = self.conn.lock().await;
+        // Cascade cleanup (formerly DB-level ON DELETE SET NULL, now in code):
+        // detach the template reference from all papers that used it
+        conn.execute("UPDATE papers SET template_id = NULL WHERE template_id = ?1", params![id])
+            .map_err(|e| e.to_string())?;
+        let affected = conn
+            .execute("DELETE FROM paper_templates WHERE id = ?1", params![id])
+            .map_err(|e| e.to_string())?;
+        if affected == 0 {
+            return Err("paper template not found".to_string());
+        }
+        Ok(())
+    }
+
+    async fn find_paper_template_by_id(&self, id: i64) -> Result<Option<PaperTemplateRow>, String> {
+        let conn = self.conn.lock().await;
+        let mut stmt = conn
+            .prepare("SELECT id, name, description, preview, created_at, updated_at FROM paper_templates WHERE id = ?1")
+            .map_err(|e| e.to_string())?;
+        let result = stmt.query_row(params![id], |row| {
+            Ok(PaperTemplateRow {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                description: row.get(2)?,
+                preview: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
+            })
+        });
+        match result {
+            Ok(t) => Ok(Some(t)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.to_string()),
+        }
+    }
+
+    async fn find_all_paper_templates(&self) -> Result<Vec<PaperTemplateRow>, String> {
+        let conn = self.conn.lock().await;
+        let mut stmt = conn
+            .prepare("SELECT id, name, description, preview, created_at, updated_at FROM paper_templates ORDER BY id ASC")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(PaperTemplateRow {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    description: row.get(2)?,
+                    preview: row.get(3)?,
+                    created_at: row.get(4)?,
+                    updated_at: row.get(5)?,
+                })
+            })
+            .map_err(|e| e.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?;
+        Ok(rows)
+    }
+
+    async fn store_paper_template_content(&self, id: i64, content: &[u8]) -> Result<(), String> {
+        let conn = self.conn.lock().await;
+        let affected = conn
+            .execute(
+                "UPDATE paper_templates SET content = ?1, updated_at = datetime('now') WHERE id = ?2",
+                params![content, id],
+            )
+            .map_err(|e| e.to_string())?;
+        if affected == 0 {
+            return Err("paper template not found".to_string());
+        }
+        Ok(())
+    }
+
+    async fn load_paper_template_content(&self, id: i64) -> Result<Option<Vec<u8>>, String> {
+        let conn = self.conn.lock().await;
+        let result = conn
+            .query_row(
+                "SELECT content FROM paper_templates WHERE id = ?1",
                 params![id],
                 |row| row.get::<_, Option<Vec<u8>>>(0),
             );
