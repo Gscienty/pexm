@@ -51,6 +51,10 @@ if (id) {
             <span class="breadcrumb-current" id="breadcrumbTitle">加载中...</span>
           </nav>
           <div class="doc-actions">
+            <button class="action-btn" id="btnSettings" type="button">
+              <span class="action-icon">⚙️</span>
+              设置
+            </button>
             <button class="action-btn primary" id="btnSave">
               <span class="action-icon">👁</span>
               预览
@@ -109,6 +113,30 @@ if (id) {
           </div>
         </div>
       </main>
+    </div>
+
+    <div class="doc-settings-overlay" id="docSettingsOverlay" hidden>
+      <div class="doc-settings-modal" role="dialog" aria-modal="true" aria-labelledby="docSettingsTitle">
+        <button class="doc-settings-close" id="btnSettingsClose" type="button" aria-label="关闭设置">×</button>
+        <div class="doc-settings-shell">
+          <aside class="doc-settings-nav">
+            <div class="doc-settings-nav-title">配置</div>
+            <a class="doc-settings-nav-item active" href="#settings-template">配置模板</a>
+          </aside>
+          <div class="doc-settings-content" id="docSettingsContent">
+            <section class="doc-settings-section" id="settings-template">
+              <h3>配置模板</h3>
+              <p>设置当前试卷的基础模板信息，统一封面、题型顺序与文案样式。</p>
+              <div class="doc-settings-card-grid" id="templateSettingsContent">
+                <div class="doc-settings-card">
+                  <strong>模板状态</strong>
+                  <span>加载中...</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
     </div>
 
   <script>

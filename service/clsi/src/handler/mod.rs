@@ -1,10 +1,9 @@
 pub mod compile;
+mod default_lua_script;
 
 use tonic::{Request, Response, Status};
 
-use crate::clsi::{
-    clsi_service_server::ClsiService, CompilePdfRequest, CompilePdfResponse,
-};
+use crate::clsi::{CompilePdfRequest, CompilePdfResponse, clsi_service_server::ClsiService};
 use compile::CompileHandler;
 
 #[derive(Clone)]

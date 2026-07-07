@@ -9,6 +9,7 @@ use crate::rpcclient::dal::{
     CreateDirectoryRequest, CreatePaperRequest, DeleteDirectoryRequest, DeletePaperRequest,
     UpdateDirectoryRequest, UpdatePaperRequest, MoveDirectoryRequest, MovePaperRequest,
     GetPaperBreadcrumbRequest, UpdateExamSpaceRequest, DeleteExamSpaceRequest,
+    ListPaperTemplatesRequest, SetPaperTemplateRequest,
 };
 
 use super::types::*;
@@ -250,6 +251,29 @@ impl Query {
             paper: paper_to_gql(paper),
         })
     }
+
+    async fn paper_templates(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<GqlPaperTemplate>> {
+        let _claim = ctx
+            .data::<Claim>()
+            .map_err(|_| "unauthorized")?;
+
+        let mut client = ctx
+            .data::<DalServiceClient<tonic::transport::Channel>>()
+            .map_err(|_| "dal client unavailable")?
+            .clone();
+
+        let response = client
+            .list_paper_templates(ListPaperTemplatesRequest {})
+            .await
+            .map_err(|e| e.to_string())?
+            .into_inner();
+
+        Ok(response.templates.into_iter().map(|t| GqlPaperTemplate {
+            id: t.id,
+            name: t.name,
+            description: t.description,
+        }).collect())
+    }
 }
 
 pub struct Mutation;
@@ -488,6 +512,33 @@ impl Mutation {
             .move_paper(MovePaperRequest {
                 id,
                 new_directory_id: new_directory_id.unwrap_or(0),
+            })
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(true)
+    }
+
+    async fn set_paper_template(
+        &self,
+        ctx: &Context<'_>,
+        paper_id: i64,
+        template_id: i64,
+    ) -> async_graphql::Result<bool> {
+        let _claim = ctx
+            .data::<Claim>()
+            .map_err(|_| "unauthorized")?;
+
+        let mut client = ctx
+            .data::<DalServiceClient<tonic::transport::Channel>>()
+            .map_err(|_| "dal client unavailable")?
+            .clone();
+
+        client
+            .set_paper_template(SetPaperTemplateRequest {
+                id: paper_id,
+                template_id,
+                template_config: Vec::new(),
             })
             .await
             .map_err(|e| e.to_string())?;

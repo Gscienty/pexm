@@ -130,6 +130,10 @@ body {
   background: #1a1a1a;
 }
 
+body.doc-settings-open {
+  overflow: hidden;
+}
+
 .action-icon {
   font-size: 0.875rem;
 }
@@ -138,6 +142,233 @@ body {
   flex: 1;
   overflow: hidden;
   display: flex;
+}
+
+.doc-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.doc-settings-overlay[hidden] {
+  display: none;
+}
+
+.doc-settings-modal {
+  position: relative;
+  width: min(1120px, calc(100vw - 2rem));
+  height: min(760px, calc(100vh - 2rem));
+  max-width: 1120px;
+  max-height: 760px;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.doc-settings-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.doc-settings-close:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.doc-settings-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+.doc-settings-nav {
+  padding: 1.5rem 1rem;
+  border-right: 1px solid var(--border-color);
+  background: #f8fafc;
+}
+
+.doc-settings-nav-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 0.75rem;
+  padding: 0 0.6rem;
+}
+
+.doc-settings-nav-item {
+  display: block;
+  padding: 0.7rem 0.8rem;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+  transition: all 0.15s ease;
+}
+
+.doc-settings-nav-item:hover,
+.doc-settings-nav-item.active {
+  background: #fff;
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px rgba(74, 144, 226, 0.12);
+}
+
+.doc-settings-content {
+  padding: 1.5rem 2rem 2rem;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.doc-settings-section {
+  padding: 1.2rem 0 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  scroll-margin-top: 1rem;
+}
+
+.doc-settings-section:last-child {
+  border-bottom: none;
+}
+
+.doc-settings-section h3 {
+  font-size: 1rem;
+  margin-bottom: 0.4rem;
+  color: var(--text-primary);
+}
+
+.doc-settings-section p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.doc-settings-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.8rem;
+}
+
+.doc-settings-card {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+  background: #fff;
+}
+
+.doc-settings-card strong {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  margin-bottom: 0.2rem;
+}
+
+.doc-settings-card span {
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+.doc-settings-link {
+  color: var(--blue);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.doc-settings-link:hover {
+  color: var(--blue-hover);
+  text-decoration: underline;
+}
+
+.doc-settings-card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.doc-settings-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.doc-settings-action-btn {
+  align-self: flex-start;
+  border: 1px solid var(--border-color);
+  background: #fff;
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.doc-settings-action-btn:hover {
+  background: var(--hover-bg);
+  border-color: #cfd7de;
+}
+
+.doc-settings-template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+.doc-settings-template-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.75rem 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.doc-settings-template-item:hover,
+.doc-settings-template-item.active {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 1px rgba(74, 144, 226, 0.12);
+}
+
+.doc-settings-template-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.doc-settings-template-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.doc-settings-template-empty {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
 }
 
 .doc-content-wrapper {

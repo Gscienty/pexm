@@ -10,6 +10,12 @@ service ClsiService {
 message CompilePdfRequest {
   // yjs 文档二进制内容 (Y.encodeStateAsUpdate)
   bytes yjs_content = 1;
+  // Lua 脚本内容，需包含 render_content(block, config) 函数，返回 LaTeX 字符串
+  string lua_script = 2;
+  // 模板配置 JSON 字符串
+  string config = 3;
+  // 试卷标题，渲染时写入 config.title 供 lua 使用
+  string title = 4;
 }
 
 message CompilePdfResponse {

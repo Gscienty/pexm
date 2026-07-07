@@ -1,4 +1,6 @@
 mod handler;
+mod latex_render;
+mod lua_engine;
 
 use handler::ClsiServiceHandler;
 use tonic::transport::Server;

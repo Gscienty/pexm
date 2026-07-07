@@ -87,7 +87,10 @@ export const UppercaseLetterList = Node.create({
           const listItemStart = $from.before($from.depth);
           const contentAfterCursor = paragraph.content.cut($from.parentOffset);
           const newParagraph = state.schema.nodes.paragraph.create(null, contentAfterCursor);
-          const newListItem = state.schema.nodes.listItem.create(null, newParagraph);
+          const newListItem = state.schema.nodes.listItem.create(
+            { prefix: 'letter' },
+            newParagraph,
+          );
 
           const tr = state.tr;
           tr.delete($from.parentOffset, listItemStart + paragraph.nodeSize);

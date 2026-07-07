@@ -1,8 +1,17 @@
-import * as pdfjsLib from 'pdfjs-dist';
 import { compilePdf } from './api';
+import { initTemplateSettings } from './templateSettings';
 
-// Load worker from local public directory.
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+let pdfjsLibPromise: Promise<typeof import('pdfjs-dist')> | null = null;
+
+async function getPdfJsLib() {
+  if (!pdfjsLibPromise) {
+    pdfjsLibPromise = import('pdfjs-dist').then((module) => {
+      module.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+      return module;
+    });
+  }
+  return pdfjsLibPromise;
+}
 
 type ZoomMode = 'fit-width' | 'fit-page' | 'actual' | 'custom';
 
@@ -16,6 +25,8 @@ const ZOOM_LABELS: Record<ZoomMode, string> = {
 const ZOOM_CYCLE: ZoomMode[] = ['fit-width', 'fit-page', 'actual'];
 
 export function initPreview(paperToken: string) {
+  if (typeof window === 'undefined') return;
+
   const btnSave = document.getElementById('btnSave');
   const docContentWrapper = document.getElementById('docContentWrapper');
   const docPreviewPanel = document.getElementById('docPreviewPanel');
@@ -24,7 +35,13 @@ export function initPreview(paperToken: string) {
   const btnFullscreen = document.getElementById('btnFullscreen');
   const btnRefresh = document.getElementById('btnRefresh');
   const btnZoom = document.getElementById('btnZoom');
+  const btnSettings = document.getElementById('btnSettings');
+  const btnSettingsClose = document.getElementById('btnSettingsClose');
+  const docSettingsOverlay = document.getElementById('docSettingsOverlay');
+  const docSettingsContent = document.getElementById('docSettingsContent');
   const previewContent = document.getElementById('previewContent');
+  const docSettingsNavItems = Array.from(document.querySelectorAll<HTMLAnchorElement>('.doc-settings-nav-item'));
+  const docSettingsSections = Array.from(document.querySelectorAll<HTMLElement>('.doc-settings-section'));
 
   let isPreviewMode = localStorage.getItem('preview-mode') === 'true';
   let isFullscreen = localStorage.getItem('preview-fullscreen') === 'true';
@@ -51,6 +68,36 @@ export function initPreview(paperToken: string) {
       zoomMenu.remove();
       zoomMenu = null;
     }
+  }
+
+  function openSettingsModal() {
+    if (!docSettingsOverlay) return;
+    docSettingsOverlay.removeAttribute('hidden');
+    document.body.classList.add('doc-settings-open');
+    setActiveSettingNav('settings-template');
+  }
+
+  function closeSettingsModal() {
+    if (!docSettingsOverlay) return;
+    docSettingsOverlay.setAttribute('hidden', '');
+    document.body.classList.remove('doc-settings-open');
+  }
+
+  function setActiveSettingNav(sectionId: string) {
+    docSettingsNavItems.forEach((item) => {
+      const isActive = item.getAttribute('href') === `#${sectionId}`;
+      item.classList.toggle('active', isActive);
+    });
+  }
+
+  function scrollToSettingSection(sectionId: string) {
+    const target = docSettingsSections.find((section) => section.id === sectionId);
+    if (!target || !docSettingsContent) return;
+    setActiveSettingNav(sectionId);
+    docSettingsContent.scrollTo({
+      top: Math.max(0, target.offsetTop - 16),
+      behavior: 'smooth',
+    });
   }
 
   function openZoomMenu() {
@@ -188,9 +235,12 @@ export function initPreview(paperToken: string) {
     scheduleRender();
   }
 
+  void initTemplateSettings(paperToken);
+
   async function renderPdf(data: ArrayBuffer) {
     if (!previewContent || !docPreviewPanel) return;
 
+    const pdfjsLib = await getPdfJsLib();
     const pdf = await pdfjsLib.getDocument({ data }).promise;
     const numPages = pdf.numPages;
 
@@ -365,6 +415,42 @@ export function initPreview(paperToken: string) {
       if (isPreviewMode) loadPdf();
     });
   }
+
+  // Settings modal
+  if (btnSettings) {
+    btnSettings.addEventListener('click', () => {
+      openSettingsModal();
+    });
+  }
+
+  if (btnSettingsClose) {
+    btnSettingsClose.addEventListener('click', () => {
+      closeSettingsModal();
+    });
+  }
+
+  if (docSettingsOverlay) {
+    docSettingsOverlay.addEventListener('click', (e) => {
+      if (e.target === docSettingsOverlay) {
+        closeSettingsModal();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !docSettingsOverlay.hasAttribute('hidden')) {
+        closeSettingsModal();
+      }
+    });
+  }
+
+  docSettingsNavItems.forEach((item) => {
+    item.addEventListener('click', (e) => {
+      const href = item.getAttribute('href');
+      if (!href?.startsWith('#')) return;
+      e.preventDefault();
+      scrollToSettingSection(href.slice(1));
+    });
+  });
 
   // Zoom menu
   if (btnZoom) {

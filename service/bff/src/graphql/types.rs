@@ -93,3 +93,10 @@ pub struct GqlPaperBreadcrumb {
     pub directory_items: Vec<GqlBreadcrumbItem>,
     pub paper: GqlPaper,
 }
+
+#[derive(SimpleObject, Clone)]
+pub struct GqlPaperTemplate {
+    pub id: i64,
+    pub name: String,
+    pub description: String,
+}

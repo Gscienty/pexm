@@ -29,9 +29,7 @@ CREATE TABLE IF NOT EXISTS directories (
     parent_id       INTEGER,
     name            TEXT NOT NULL,
     created_at      DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at      DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (exam_space_id) REFERENCES exam_spaces(id) ON DELETE CASCADE,
-    FOREIGN KEY (parent_id) REFERENCES directories(id) ON DELETE CASCADE
+    updated_at      DATETIME NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_directories_exam_space_id ON directories(exam_space_id);
@@ -43,11 +41,22 @@ CREATE TABLE IF NOT EXISTS papers (
     directory_id    INTEGER,
     title           TEXT NOT NULL,
     content         BLOB,
+    template_id     INTEGER,
+    template_config BLOB,
     created_at      DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at      DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (exam_space_id) REFERENCES exam_spaces(id) ON DELETE CASCADE,
-    FOREIGN KEY (directory_id) REFERENCES directories(id) ON DELETE SET NULL
+    updated_at      DATETIME NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_papers_exam_space_id ON papers(exam_space_id);
 CREATE INDEX IF NOT EXISTS idx_papers_directory_id ON papers(directory_id);
+
+-- 试卷模板：存储 Lua 脚本（包含输出配置或 LaTeX 内容的若干函数）
+CREATE TABLE IF NOT EXISTS paper_templates (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT NOT NULL,
+    description     TEXT NOT NULL DEFAULT '',
+    content         BLOB,
+    preview         BLOB,
+    created_at      DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at      DATETIME NOT NULL DEFAULT (datetime('now'))
+);

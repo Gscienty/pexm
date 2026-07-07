@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "lib/auth-lib",
+    "service/clsi",
+    "service/dal",
+    "service/bff",
+    "service/real_time",
+]
+resolver = "2"

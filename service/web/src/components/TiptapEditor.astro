@@ -22,6 +22,11 @@ const { content = '', class: className = '', docName = '', wsUrl = '', initialCo
   import { DragHandle } from './tiptap/drag-handle';
   import { Collaboration } from './tiptap/collaboration';
   import { UppercaseLetterList } from './tiptap/uppercase-letter-list';
+  import { PrefixedListItem } from './tiptap/list-item';
+  import { MathInline } from './tiptap/math-inline';
+  import { MathBlock } from './tiptap/math-block';
+  import { TableBlock } from './tiptap/table';
+  import 'katex/dist/katex.min.css';
 
   const editors = document.querySelectorAll('.editor');
 
@@ -35,11 +40,16 @@ const { content = '', class: className = '', docName = '', wsUrl = '', initialCo
     const extensions = [
       StarterKit.configure({
         orderedList: { priority: 99 },
+        listItem: false,
       }),
       Anchor,
       Question,
       DragHandle,
       UppercaseLetterList,
+      PrefixedListItem,
+      MathBlock,
+      MathInline,
+      ...TableBlock,
     ];
 
     if (docName) {
@@ -145,5 +155,178 @@ const { content = '', class: className = '', docName = '', wsUrl = '', initialCo
 
   .editor :global(.ProseMirror .question-block p:last-child) {
     margin-bottom: 0;
+  }
+
+  /* inline math: $...$ */
+  .editor :global(.ProseMirror .math-inline) {
+    display: inline-block;
+    padding: 0 0.2em;
+    margin: 0 0.1em;
+    border-radius: 4px;
+    background: #f5f5f4;
+    cursor: pointer;
+    vertical-align: baseline;
+    line-height: 1.4;
+    border: 1px solid transparent;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .editor :global(.ProseMirror .math-inline:hover) {
+    background: #ebebe9;
+  }
+
+  .editor :global(.ProseMirror .math-inline.ProseMirror-selectednode) {
+    border-color: #2563eb;
+    background: #eff6ff;
+  }
+
+  .editor :global(.ProseMirror .math-inline .math-inline-display) {
+    display: inline;
+  }
+
+  .editor :global(.ProseMirror .math-inline .math-inline-display .katex) {
+    font-size: 1.05em;
+  }
+
+  .editor :global(.ProseMirror .math-inline .math-inline-input) {
+    font: inherit;
+    font-size: 0.95em;
+    min-width: 20px;
+    padding: 0 0.2em;
+    border: 1px dashed #2563eb;
+    border-radius: 4px;
+    outline: none;
+    background: #fff;
+    box-sizing: content-box;
+  }
+
+  /* block math: $$...$$ */
+  .editor :global(.ProseMirror .math-block) {
+    position: relative;
+    margin: 0.75em 0;
+    padding: 0.5em 0.75rem;
+    border-radius: 8px;
+    background: #fafaf9;
+    border: 1px solid #e7e5e4;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .editor :global(.ProseMirror .math-block:hover) {
+    background: #f5f5f4;
+  }
+
+  .editor :global(.ProseMirror .math-block.ProseMirror-selectednode) {
+    border-color: #2563eb;
+    background: #eff6ff;
+  }
+
+  .editor :global(.ProseMirror .math-block .math-block-display) {
+    text-align: center;
+    overflow-x: auto;
+  }
+
+  .editor :global(.ProseMirror .math-block .math-block-placeholder) {
+    color: #a8a29e;
+    font-style: italic;
+    font-size: 0.9em;
+  }
+
+  .editor :global(.ProseMirror .math-block .math-block-textarea) {
+    width: 100%;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.95em;
+    padding: 0.5em;
+    border: 1px dashed #2563eb;
+    border-radius: 6px;
+    outline: none;
+    resize: vertical;
+    background: #fff;
+    box-sizing: border-box;
+  }
+
+  /* table */
+  .editor :global(.ProseMirror .tableWrapper) {
+    overflow-x: auto;
+    margin: 0.75em 0;
+  }
+
+  .editor :global(.ProseMirror table.tiptap-table) {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+    overflow: hidden;
+    --default-cell-min-width: 100px;
+  }
+
+  .editor :global(.ProseMirror table.tiptap-table td),
+  .editor :global(.ProseMirror table.tiptap-table th) {
+    border: 1px solid #d6d3d1;
+    padding: 6px 8px;
+    vertical-align: top;
+    box-sizing: border-box;
+    position: relative;
+  }
+
+  .editor :global(.ProseMirror table.tiptap-table td:not([data-colwidth]):not(.column-resize-dragging)),
+  .editor :global(.ProseMirror table.tiptap-table th:not([data-colwidth]):not(.column-resize-dragging)) {
+    min-width: var(--default-cell-min-width);
+  }
+
+  .editor :global(.ProseMirror table.tiptap-table th) {
+    background: #f5f5f4;
+    font-weight: 600;
+  }
+
+  /* row-resize hover hint: a thin bar on the cell's bottom edge */
+  .editor :global(.ProseMirror table.tiptap-table td:hover::before),
+  .editor :global(.ProseMirror table.tiptap-table th:hover::before) {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -3px;
+    height: 5px;
+    background: #60a5fa;
+    opacity: 0.5;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  /* column-resize handle */
+  .editor :global(.ProseMirror .column-resize-handle) {
+    position: absolute;
+    right: -2px;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    z-index: 20;
+    background-color: #60a5fa;
+    pointer-events: none;
+  }
+
+  .editor :global(.ProseMirror.resize-cursor) {
+    cursor: col-resize;
+  }
+
+  .editor :global(.ProseMirror .selectedCell:after) {
+    z-index: 2;
+    position: absolute;
+    content: '';
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: rgba(96, 165, 250, 0.25);
+    pointer-events: none;
+  }
+
+  /* floating toolbar (lives in document.body, outside .editor) */
+  :global(.tiptap-table-toolbar-btn:hover:not(:disabled)) {
+    background: #e7e5e4;
+  }
+
+  :global(.tiptap-table-toolbar-btn-group) {
+    margin-right: 4px;
   }
 </style>

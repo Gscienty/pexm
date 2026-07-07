@@ -17,15 +17,24 @@ importers:
       '@tiptap/extension-heading':
         specifier: ^3.23.1
         version: 3.23.1(@tiptap/core@3.23.1(@tiptap/pm@3.23.1))
+      '@tiptap/extension-list-item':
+        specifier: ^3.23.1
+        version: 3.23.1(@tiptap/extension-list@3.23.1(@tiptap/core@3.23.1(@tiptap/pm@3.23.1))(@tiptap/pm@3.23.1))
       '@tiptap/pm':
         specifier: ^3.23.1
         version: 3.23.1
       '@tiptap/starter-kit':
         specifier: ^3.23.1
         version: 3.23.1
+      '@types/katex':
+        specifier: ^0.16.8
+        version: 0.16.8
       astro:
         specifier: ^4.16.0
         version: 4.16.19(rollup@4.60.3)(typescript@5.9.3)
+      katex:
+        specifier: ^0.17.0
+        version: 0.17.0
       pdfjs-dist:
         specifier: ^6.0.227
         version: 6.0.227
@@ -832,6 +841,9 @@ packages:
   '@types/hast@3.0.4':
     resolution: {integrity: sha512-WPs+bbQw5aCj+x6laNGWLH3wviHtoCv/P3+otBhbOhJgG8qtpdAMlTCxLtsTWA7LH1Oh/bFCHsBn0TPS5m30EQ==}
 
+  '@types/katex@0.16.8':
+    resolution: {integrity: sha512-trgaNyfU+Xh2Tc+ABIb44a5AYUpicB3uwirOioeOkNPPbmgRNtcWyDeeFRzjPZENO9Vq8gvVqfhaaXWLlevVwg==}
+
   '@types/mdast@4.0.4':
     resolution: {integrity: sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA==}
 
@@ -972,6 +984,10 @@ packages:
 
   comma-separated-tokens@2.0.3:
     resolution: {integrity: sha512-Fu4hJdvzeylCfQPp9SGWidpzrMs7tTrlu6Vb8XGaRGck8QSNZJJp538Wrb60Lax4fPwR64ViY468OIUTbRlGZg==}
+
+  commander@8.3.0:
+    resolution: {integrity: sha512-OkTL9umf+He2DZkUq8f8J9of7yL6RJKI24dVITBmNfZBmri9zYZQrKkuXiKhyfPSu8tUhnVBB1iKXevvnlR4Ww==}
+    engines: {node: '>= 12'}
 
   common-ancestor-path@1.0.1:
     resolution: {integrity: sha512-L3sHRo1pXXEqX8VU28kfgUY+YGsk09hPqZiZmLacNib6XNTCM8ubYeT7ryXQw8asB1sKgcU5lkB7ONug08aB8w==}
@@ -1293,6 +1309,10 @@ packages:
   json5@2.2.3:
     resolution: {integrity: sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==}
     engines: {node: '>=6'}
+    hasBin: true
+
+  katex@0.17.0:
+    resolution: {integrity: sha512-Vdw0ATsQ9V+LuegM/BTwQqV/6cTl5lbGcIrU+BCgLxyf6bo38ybOr372tuSIxir3CN720flu1meYR6XzNMwQnw==}
     hasBin: true
 
   kind-of@6.0.3:
@@ -2691,6 +2711,8 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
 
+  '@types/katex@0.16.8': {}
+
   '@types/mdast@4.0.4':
     dependencies:
       '@types/unist': 3.0.3
@@ -2884,6 +2906,8 @@ snapshots:
     optional: true
 
   comma-separated-tokens@2.0.3: {}
+
+  commander@8.3.0: {}
 
   common-ancestor-path@1.0.1: {}
 
@@ -3204,6 +3228,10 @@ snapshots:
   jsesc@3.1.0: {}
 
   json5@2.2.3: {}
+
+  katex@0.17.0:
+    dependencies:
+      commander: 8.3.0
 
   kind-of@6.0.3: {}
 
